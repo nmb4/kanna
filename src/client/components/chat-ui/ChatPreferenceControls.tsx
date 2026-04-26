@@ -156,8 +156,8 @@ export function InputPopover({
           {trigger}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="center" className="w-64 p-1">
-        <div className="space-y-1">
+      <PopoverContent align="center" collisionPadding={8} className="w-64 p-1">
+        <div className="space-y-1 overflow-y-auto overscroll-contain max-h-[min(50dvh,400px)]">
           {typeof children === "function"
             ? children(() => setOpen(false))
             : children}
@@ -258,9 +258,9 @@ function PiModelPickerContent({
       : modelList;
 
   return (
-    <>
+    <div className="flex flex-col min-h-0">
       {showSearch ? (
-        <div className="px-1 pb-1">
+        <div className="px-1 pb-1 shrink-0">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -274,38 +274,40 @@ function PiModelPickerContent({
           </div>
         </div>
       ) : null}
-      {filtered.length === 0 ? (
-        <div className="px-2 py-3 text-center text-xs text-muted-foreground">
-          No models found.
-        </div>
-      ) : (
-        filtered.map((candidate) => (
-          <PopoverMenuItem
-            key={candidate.id}
-            onClick={() => {
-              onModelChange(selectedProvider, candidate.id);
-              close();
-            }}
-            selected={model === candidate.id}
-            icon={<Box className="h-4 w-4 text-muted-foreground" />}
-            label={
-              showCodexCliRequirementHints &&
-              selectedProvider === "codex" &&
-              candidate.id === "gpt-5.5" ? (
-                <>
-                  {candidate.label}{" "}
-                  <span className="text-xs font-normal text-muted-foreground">
-                    codex-cli &gt;= 0.124
-                  </span>
-                </>
-              ) : (
-                candidate.label
-              )
-            }
-          />
-        ))
-      )}
-    </>
+      <div className="space-y-1 overflow-y-auto overscroll-contain min-h-0">
+        {filtered.length === 0 ? (
+          <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+            No models found.
+          </div>
+        ) : (
+          filtered.map((candidate) => (
+            <PopoverMenuItem
+              key={candidate.id}
+              onClick={() => {
+                onModelChange(selectedProvider, candidate.id);
+                close();
+              }}
+              selected={model === candidate.id}
+              icon={<Box className="h-4 w-4 text-muted-foreground" />}
+              label={
+                showCodexCliRequirementHints &&
+                selectedProvider === "codex" &&
+                candidate.id === "gpt-5.5" ? (
+                  <>
+                    {candidate.label}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">
+                      codex-cli &gt;= 0.124
+                    </span>
+                  </>
+                ) : (
+                  candidate.label
+                )
+              }
+            />
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 
