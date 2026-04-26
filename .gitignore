@@ -28,3 +28,5 @@ Thumbs.db
 # vite
 vite.config.ts.timestamp-*
 /.kanna
+/pi-acp
+/pi-mono

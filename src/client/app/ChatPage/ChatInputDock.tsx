@@ -1,24 +1,28 @@
-import { memo, type RefObject } from "react"
-import { ChatInput, type ChatInputHandle } from "../../components/chat-ui/ChatInput"
-import type { ContextWindowSnapshot } from "../../lib/contextWindow"
-import type { KannaState } from "../useKannaState"
+import { memo, type RefObject } from "react";
+import {
+  ChatInput,
+  type ChatInputHandle,
+} from "../../components/chat-ui/ChatInput";
+import type { AgentProvider } from "../../../shared/types";
+import type { ContextWindowSnapshot } from "../../lib/contextWindow";
+import type { KannaState } from "../useKannaState";
 
 interface ChatInputDockProps {
-  inputRef: RefObject<HTMLDivElement | null>
-  onLayoutChange: () => void
-  chatInputRef: RefObject<ChatInputHandle | null>
-  chatInputElementRef: RefObject<HTMLTextAreaElement | null>
-  activeChatId: string | null
-  previousPrompt: string | null
-  hasSelectedProject: boolean
-  runtimeStatus: string | null
-  canCancel: boolean
-  projectId: string | null
-  activeProvider: "claude" | "codex" | null
-  availableProviders: KannaState["availableProviders"]
-  contextWindowSnapshot: ContextWindowSnapshot | null
-  onSubmit: KannaState["handleSend"]
-  onCancel: () => void
+  inputRef: RefObject<HTMLDivElement | null>;
+  onLayoutChange: () => void;
+  chatInputRef: RefObject<ChatInputHandle | null>;
+  chatInputElementRef: RefObject<HTMLTextAreaElement | null>;
+  activeChatId: string | null;
+  previousPrompt: string | null;
+  hasSelectedProject: boolean;
+  runtimeStatus: string | null;
+  canCancel: boolean;
+  projectId: string | null;
+  activeProvider: AgentProvider | null;
+  availableProviders: KannaState["availableProviders"];
+  contextWindowSnapshot: ContextWindowSnapshot | null;
+  onSubmit: KannaState["handleSend"];
+  onCancel: () => void;
 }
 
 export const ChatInputDock = memo(function ChatInputDock({
@@ -40,7 +44,10 @@ export const ChatInputDock = memo(function ChatInputDock({
 }: ChatInputDockProps) {
   return (
     <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
-      <div className="bg-gradient-to-t from-background via-background pointer-events-auto" ref={inputRef}>
+      <div
+        className="bg-gradient-to-t from-background via-background pointer-events-auto"
+        ref={inputRef}
+      >
         <ChatInput
           ref={chatInputRef}
           inputElementRef={chatInputElementRef}
@@ -59,5 +66,5 @@ export const ChatInputDock = memo(function ChatInputDock({
         />
       </div>
     </div>
-  )
-})
+  );
+});

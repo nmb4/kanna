@@ -1,15 +1,15 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test";
 import {
   migrateChatPreferencesState,
   NEW_CHAT_COMPOSER_ID,
   useChatPreferencesStore,
-} from "./chatPreferencesStore"
+} from "./chatPreferencesStore";
 
-const INITIAL_STATE = useChatPreferencesStore.getInitialState()
+const INITIAL_STATE = useChatPreferencesStore.getInitialState();
 
 afterEach(() => {
-  useChatPreferencesStore.setState(INITIAL_STATE)
-})
+  useChatPreferencesStore.setState(INITIAL_STATE);
+});
 
 describe("migrateChatPreferencesState", () => {
   test("preserves max effort for versioned Opus Claude models", () => {
@@ -21,15 +21,25 @@ describe("migrateChatPreferencesState", () => {
           modelOptions: { reasoningEffort: "max", contextWindow: "1m" },
           planMode: false,
         },
+        codex: {
+          model: "gpt-5.5",
+          modelOptions: { reasoningEffort: "high", fastMode: false },
+          planMode: false,
+        },
+        pi: {
+          model: "auto",
+          modelOptions: { thinkingLevel: "high" },
+          planMode: false,
+        },
       },
-    })
+    });
 
     expect(migrated.providerDefaults.claude).toEqual({
       model: "claude-opus-4-7",
       modelOptions: { reasoningEffort: "max", contextWindow: "1m" },
       planMode: false,
-    })
-  })
+    });
+  });
 
   test("normalizes provider defaults and legacy composer state", () => {
     const migrated = migrateChatPreferencesState({
@@ -45,6 +55,11 @@ describe("migrateChatPreferencesState", () => {
           modelOptions: { reasoningEffort: "minimal", fastMode: true },
           planMode: false,
         },
+        pi: {
+          model: "auto",
+          modelOptions: { thinkingLevel: "high" },
+          planMode: false,
+        },
       },
       composerState: {
         provider: "claude",
@@ -52,7 +67,7 @@ describe("migrateChatPreferencesState", () => {
         modelOptions: { reasoningEffort: "max", contextWindow: "1m" },
         planMode: false,
       },
-    })
+    });
 
     expect(migrated).toEqual({
       defaultProvider: "last_used",
@@ -67,6 +82,13 @@ describe("migrateChatPreferencesState", () => {
           modelOptions: { reasoningEffort: "minimal", fastMode: true },
           planMode: false,
         },
+        pi: {
+          model: "auto",
+          modelOptions: {
+            thinkingLevel: "high",
+          },
+          planMode: false,
+        },
       },
       chatStates: {},
       legacyComposerState: {
@@ -75,8 +97,8 @@ describe("migrateChatPreferencesState", () => {
         modelOptions: { reasoningEffort: "high", contextWindow: "1m" },
         planMode: false,
       },
-    })
-  })
+    });
+  });
 
   test("drops unsupported Claude context window selections during migration", () => {
     const migrated = migrateChatPreferencesState({
@@ -84,7 +106,20 @@ describe("migrateChatPreferencesState", () => {
       providerDefaults: {
         claude: {
           model: "haiku",
-          modelOptions: { reasoningEffort: "low", contextWindow: "1m" as never },
+          modelOptions: {
+            reasoningEffort: "low",
+            contextWindow: "1m" as never,
+          },
+          planMode: false,
+        },
+        codex: {
+          model: "gpt-5.5",
+          modelOptions: { reasoningEffort: "high", fastMode: false },
+          planMode: false,
+        },
+        pi: {
+          model: "auto",
+          modelOptions: { thinkingLevel: "high" },
           planMode: false,
         },
       },
@@ -92,48 +127,74 @@ describe("migrateChatPreferencesState", () => {
         chatA: {
           provider: "claude",
           model: "haiku",
-          modelOptions: { reasoningEffort: "high", contextWindow: "1m" as never },
+          modelOptions: {
+            reasoningEffort: "high",
+            contextWindow: "1m" as never,
+          },
           planMode: false,
         },
       },
-    })
+    });
 
-    expect(migrated.providerDefaults.claude.modelOptions).toEqual({ reasoningEffort: "low", contextWindow: "200k" })
+    expect(migrated.providerDefaults.claude.modelOptions).toEqual({
+      reasoningEffort: "low",
+      contextWindow: "200k",
+    });
     expect(migrated.chatStates.chatA).toEqual({
       provider: "claude",
       model: "claude-haiku-4-5-20251001",
       modelOptions: { reasoningEffort: "high", contextWindow: "200k" },
       planMode: false,
-    })
-  })
+    });
+  });
 
   test("rewrites persisted Codex defaults to gpt-5.5 during migration", () => {
     const migrated = migrateChatPreferencesState({
       defaultProvider: "last_used",
       providerDefaults: {
+        claude: {
+          model: "claude-sonnet-4-6",
+          modelOptions: { reasoningEffort: "high", contextWindow: "200k" },
+          planMode: false,
+        },
         codex: {
           model: "gpt-5-codex",
           modelOptions: { reasoningEffort: "low", fastMode: true },
           planMode: false,
         },
+        pi: {
+          model: "auto",
+          modelOptions: { thinkingLevel: "high" },
+          planMode: false,
+        },
       },
-    })
+    });
 
     expect(migrated.providerDefaults.codex).toEqual({
       model: "gpt-5.5",
       modelOptions: { reasoningEffort: "low", fastMode: true },
       planMode: false,
-    })
-  })
+    });
+  });
 
   test("rewrites persisted Codex composer state to gpt-5.5 during migration", () => {
     const migrated = migrateChatPreferencesState({
       defaultProvider: "codex",
       providerDefaults: {
+        claude: {
+          model: "claude-sonnet-4-6",
+          modelOptions: { reasoningEffort: "high", contextWindow: "200k" },
+          planMode: false,
+        },
         codex: {
           model: "gpt-5.3-codex-spark",
           modelOptions: { reasoningEffort: "low", fastMode: true },
           planMode: true,
+        },
+        pi: {
+          model: "auto",
+          modelOptions: { thinkingLevel: "high" },
+          planMode: false,
         },
       },
       chatStates: {
@@ -150,27 +211,27 @@ describe("migrateChatPreferencesState", () => {
         modelOptions: { reasoningEffort: "xhigh", fastMode: true },
         planMode: true,
       },
-    })
+    });
 
     expect(migrated.providerDefaults.codex).toEqual({
       model: "gpt-5.5",
       modelOptions: { reasoningEffort: "low", fastMode: true },
       planMode: true,
-    })
+    });
     expect(migrated.chatStates.chatA).toEqual({
       provider: "codex",
       model: "gpt-5.5",
       modelOptions: { reasoningEffort: "medium", fastMode: false },
       planMode: false,
-    })
+    });
     expect(migrated.legacyComposerState).toEqual({
       provider: "codex",
       model: "gpt-5.5",
       modelOptions: { reasoningEffort: "xhigh", fastMode: true },
       planMode: true,
-    })
-  })
-})
+    });
+  });
+});
 
 describe("chat preference store", () => {
   test("starts with gpt-5.5 as the default Codex model", () => {
@@ -178,8 +239,8 @@ describe("chat preference store", () => {
       model: "gpt-5.5",
       modelOptions: { reasoningEffort: "high", fastMode: false },
       planMode: false,
-    })
-  })
+    });
+  });
 
   test("editing provider defaults does not change existing chat state", () => {
     useChatPreferencesStore.getState().setComposerState("chat-a", {
@@ -187,72 +248,78 @@ describe("chat preference store", () => {
       model: "gpt-5.3-codex",
       modelOptions: { reasoningEffort: "minimal", fastMode: true },
       planMode: true,
-    })
+    });
 
-    useChatPreferencesStore.getState().setProviderDefaultModel("codex", "gpt-5.3-codex-spark")
+    useChatPreferencesStore
+      .getState()
+      .setProviderDefaultModel("codex", "gpt-5.3-codex-spark");
     useChatPreferencesStore.getState().setProviderDefaultModelOptions("codex", {
       reasoningEffort: "low",
       fastMode: false,
-    })
-    useChatPreferencesStore.getState().setProviderDefaultPlanMode("codex", false)
+    });
+    useChatPreferencesStore
+      .getState()
+      .setProviderDefaultPlanMode("codex", false);
 
-    expect(useChatPreferencesStore.getState().getComposerState("chat-a")).toEqual({
+    expect(
+      useChatPreferencesStore.getState().getComposerState("chat-a"),
+    ).toEqual({
       provider: "codex",
       model: "gpt-5.3-codex",
       modelOptions: { reasoningEffort: "minimal", fastMode: true },
       planMode: true,
-    })
-  })
+    });
+  });
 
   test("restores isolated composer state by chat id", () => {
-    const store = useChatPreferencesStore.getState()
+    const store = useChatPreferencesStore.getState();
 
     store.setComposerState("chat-a", {
       provider: "claude",
       model: "claude-sonnet-4-6",
       modelOptions: { reasoningEffort: "low", contextWindow: "1m" },
       planMode: false,
-    })
+    });
     store.setComposerState("chat-b", {
       provider: "codex",
       model: "gpt-5.3-codex",
       modelOptions: { reasoningEffort: "minimal", fastMode: true },
       planMode: true,
-    })
-    store.setChatComposerPlanMode("chat-a", true)
+    });
+    store.setChatComposerPlanMode("chat-a", true);
 
     expect(store.getComposerState("chat-a")).toEqual({
       provider: "claude",
       model: "claude-sonnet-4-6",
       modelOptions: { reasoningEffort: "low", contextWindow: "1m" },
       planMode: true,
-    })
+    });
     expect(store.getComposerState("chat-b")).toEqual({
       provider: "codex",
       model: "gpt-5.3-codex",
       modelOptions: { reasoningEffort: "minimal", fastMode: true },
       planMode: true,
-    })
-  })
+    });
+  });
 
   test("switching Claude chat model clears unsupported context window values", () => {
-    const store = useChatPreferencesStore.getState()
+    const store = useChatPreferencesStore.getState();
 
     store.setComposerState("chat-a", {
       provider: "claude",
       model: "claude-opus-4-7",
       modelOptions: { reasoningEffort: "high", contextWindow: "1m" },
       planMode: false,
-    })
-    store.setChatComposerModel("chat-a", "haiku")
+    });
+    store.setChatComposerModel("chat-a", "haiku");
 
     expect(store.getComposerState("chat-a")).toEqual({
       provider: "claude",
       model: "claude-haiku-4-5-20251001",
       modelOptions: { reasoningEffort: "high", contextWindow: "200k" },
       planMode: false,
-    })
-  })
+    });
+  });
 
   test("resetChatComposerFromProvider copies provider defaults into the target chat", () => {
     useChatPreferencesStore.setState({
@@ -265,17 +332,21 @@ describe("chat preference store", () => {
           planMode: true,
         },
       },
-    })
+    });
 
-    useChatPreferencesStore.getState().resetChatComposerFromProvider("chat-a", "codex")
+    useChatPreferencesStore
+      .getState()
+      .resetChatComposerFromProvider("chat-a", "codex");
 
-    expect(useChatPreferencesStore.getState().getComposerState("chat-a")).toEqual({
+    expect(
+      useChatPreferencesStore.getState().getComposerState("chat-a"),
+    ).toEqual({
       provider: "codex",
       model: "gpt-5.3-codex",
       modelOptions: { reasoningEffort: "minimal", fastMode: true },
       planMode: true,
-    })
-  })
+    });
+  });
 
   test("initializeComposerForChat uses explicit provider defaults for new chats", () => {
     useChatPreferencesStore.setState({
@@ -289,17 +360,19 @@ describe("chat preference store", () => {
           planMode: true,
         },
       },
-    })
+    });
 
-    useChatPreferencesStore.getState().initializeComposerForChat("chat-a")
+    useChatPreferencesStore.getState().initializeComposerForChat("chat-a");
 
-    expect(useChatPreferencesStore.getState().getComposerState("chat-a")).toEqual({
+    expect(
+      useChatPreferencesStore.getState().getComposerState("chat-a"),
+    ).toEqual({
       provider: "codex",
       model: "gpt-5.3-codex-spark",
       modelOptions: { reasoningEffort: "minimal", fastMode: true },
       planMode: true,
-    })
-  })
+    });
+  });
 
   test("initializeComposerForChat with last_used copies the provided source state", () => {
     useChatPreferencesStore.setState({
@@ -313,16 +386,22 @@ describe("chat preference store", () => {
           planMode: true,
         },
       },
-    })
+    });
 
-    const sourceState = useChatPreferencesStore.getState().getComposerState(NEW_CHAT_COMPOSER_ID)
-    useChatPreferencesStore.getState().initializeComposerForChat("chat-a", { sourceState })
+    const sourceState = useChatPreferencesStore
+      .getState()
+      .getComposerState(NEW_CHAT_COMPOSER_ID);
+    useChatPreferencesStore
+      .getState()
+      .initializeComposerForChat("chat-a", { sourceState });
 
-    expect(useChatPreferencesStore.getState().getComposerState("chat-a")).toEqual({
+    expect(
+      useChatPreferencesStore.getState().getComposerState("chat-a"),
+    ).toEqual({
       provider: "codex",
       model: "gpt-5.3-codex",
       modelOptions: { reasoningEffort: "low", fastMode: false },
       planMode: true,
-    })
-  })
-})
+    });
+  });
+});

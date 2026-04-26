@@ -1,132 +1,171 @@
-import { create } from "zustand"
+import { create } from "zustand";
 import {
   DEFAULT_CLAUDE_MODEL_OPTIONS,
   DEFAULT_CODEX_MODEL_OPTIONS,
+  DEFAULT_PI_MODEL_OPTIONS,
   normalizeClaudeContextWindow,
   normalizeClaudeModelId,
   normalizeCodexModelId,
+  normalizePiModelId,
   isClaudeReasoningEffort,
   isCodexReasoningEffort,
+  isPiReasoningEffort,
   supportsClaudeMaxReasoningEffort,
   type AgentProvider,
   type ChatProviderPreferences,
   type ClaudeModelOptions,
   type CodexModelOptions,
+  type PiModelOptions,
   type DefaultProviderPreference,
   type ProviderPreference,
   type ProviderModelOptionsByProvider,
-} from "../../shared/types"
+} from "../../shared/types";
 
-export type { ChatProviderPreferences, DefaultProviderPreference, ProviderPreference }
+export type {
+  ChatProviderPreferences,
+  DefaultProviderPreference,
+  ProviderPreference,
+};
 
 export type ComposerState =
   | {
-    provider: "claude"
-    model: string
-    modelOptions: ClaudeModelOptions
-    planMode: boolean
-  }
+      provider: "claude";
+      model: string;
+      modelOptions: ClaudeModelOptions;
+      planMode: boolean;
+    }
   | {
-    provider: "codex"
-    model: string
-    modelOptions: CodexModelOptions
-    planMode: boolean
-  }
+      provider: "codex";
+      model: string;
+      modelOptions: CodexModelOptions;
+      planMode: boolean;
+    }
+  | {
+      provider: "pi";
+      model: string;
+      modelOptions: PiModelOptions;
+      planMode: boolean;
+    };
 
-export const NEW_CHAT_COMPOSER_ID = "__new__"
+export const NEW_CHAT_COMPOSER_ID = "__new__";
 
 type LegacyPersistedChatPreferencesState = Partial<{
-  defaultProvider: string
+  defaultProvider: string;
   providerDefaults: {
     claude?: {
-      model?: string
-      effort?: string
-      modelOptions?: Partial<ClaudeModelOptions>
-      planMode?: boolean
-    }
+      model?: string;
+      effort?: string;
+      modelOptions?: Partial<ClaudeModelOptions>;
+      planMode?: boolean;
+    };
     codex?: {
-      model?: string
-      effort?: string
-      modelOptions?: Partial<CodexModelOptions>
-      planMode?: boolean
-    }
-  }
-  composerState: PersistedComposerState
-  liveProvider: AgentProvider
+      model?: string;
+      effort?: string;
+      modelOptions?: Partial<CodexModelOptions>;
+      planMode?: boolean;
+    };
+    pi?: {
+      model?: string;
+      modelOptions?: Partial<PiModelOptions>;
+      planMode?: boolean;
+    };
+  };
+  composerState: PersistedComposerState;
+  liveProvider: AgentProvider;
   livePreferences: {
     claude?: {
-      model?: string
-      effort?: string
-      modelOptions?: Partial<ClaudeModelOptions>
-      planMode?: boolean
-    }
+      model?: string;
+      effort?: string;
+      modelOptions?: Partial<ClaudeModelOptions>;
+      planMode?: boolean;
+    };
     codex?: {
-      model?: string
-      effort?: string
-      modelOptions?: Partial<CodexModelOptions>
-      planMode?: boolean
-    }
-  }
-}>
+      model?: string;
+      effort?: string;
+      modelOptions?: Partial<CodexModelOptions>;
+      planMode?: boolean;
+    };
+    pi?: {
+      model?: string;
+      modelOptions?: Partial<PiModelOptions>;
+      planMode?: boolean;
+    };
+  };
+}>;
 
 type PersistedComposerState =
   | {
-    provider: "claude"
-    model?: string
-    effort?: string
-    modelOptions?: Partial<ClaudeModelOptions>
-    planMode?: boolean
-  }
+      provider: "claude";
+      model?: string;
+      effort?: string;
+      modelOptions?: Partial<ClaudeModelOptions>;
+      planMode?: boolean;
+    }
   | {
-    provider: "codex"
-    model?: string
-    effort?: string
-    modelOptions?: Partial<CodexModelOptions>
-    planMode?: boolean
-  }
+      provider: "codex";
+      model?: string;
+      effort?: string;
+      modelOptions?: Partial<CodexModelOptions>;
+      planMode?: boolean;
+    }
+  | {
+      provider: "pi";
+      model?: string;
+      modelOptions?: Partial<PiModelOptions>;
+      planMode?: boolean;
+    };
 
 type PersistedChatPreferencesState = Pick<
   ChatPreferencesState,
   "defaultProvider" | "providerDefaults" | "chatStates" | "legacyComposerState"
-> & LegacyPersistedChatPreferencesState
+> &
+  LegacyPersistedChatPreferencesState;
 
-export function normalizeDefaultProvider(value?: string): DefaultProviderPreference {
-  if (value === "claude" || value === "codex") return value
-  return "last_used"
+export function normalizeDefaultProvider(
+  value?: string,
+): DefaultProviderPreference {
+  if (value === "claude" || value === "codex" || value === "pi") return value;
+  return "last_used";
 }
 
 export function normalizeClaudePreference(value?: {
-  model?: string
-  effort?: string
-  modelOptions?: Partial<ClaudeModelOptions>
-  planMode?: boolean
+  model?: string;
+  effort?: string;
+  modelOptions?: Partial<ClaudeModelOptions>;
+  planMode?: boolean;
 }): ProviderPreference<ClaudeModelOptions> {
-  const reasoningEffort = value?.modelOptions?.reasoningEffort
+  const reasoningEffort = value?.modelOptions?.reasoningEffort;
   const normalizedEffort = isClaudeReasoningEffort(reasoningEffort)
     ? reasoningEffort
     : isClaudeReasoningEffort(value?.effort)
       ? value.effort
-      : DEFAULT_CLAUDE_MODEL_OPTIONS.reasoningEffort
-  const model = normalizeClaudeModelId(value?.model)
-  const contextWindow = normalizeClaudeContextWindow(model, value?.modelOptions?.contextWindow)
+      : DEFAULT_CLAUDE_MODEL_OPTIONS.reasoningEffort;
+  const model = normalizeClaudeModelId(value?.model);
+  const contextWindow = normalizeClaudeContextWindow(
+    model,
+    value?.modelOptions?.contextWindow,
+  );
 
   return {
     model,
     modelOptions: {
-      reasoningEffort: !supportsClaudeMaxReasoningEffort(model) && normalizedEffort === "max" ? "high" : normalizedEffort,
+      reasoningEffort:
+        !supportsClaudeMaxReasoningEffort(model) && normalizedEffort === "max"
+          ? "high"
+          : normalizedEffort,
       contextWindow,
     },
     planMode: Boolean(value?.planMode),
-  }
+  };
 }
 
 export function normalizeCodexPreference(value?: {
-  model?: string
-  effort?: string
-  modelOptions?: Partial<CodexModelOptions>
-  planMode?: boolean
+  model?: string;
+  effort?: string;
+  modelOptions?: Partial<CodexModelOptions>;
+  planMode?: boolean;
 }): ProviderPreference<CodexModelOptions> {
-  const reasoningEffort = value?.modelOptions?.reasoningEffort
+  const reasoningEffort = value?.modelOptions?.reasoningEffort;
   return {
     model: normalizeCodexModelId(value?.model),
     modelOptions: {
@@ -135,46 +174,67 @@ export function normalizeCodexPreference(value?: {
         : isCodexReasoningEffort(value?.effort)
           ? value.effort
           : DEFAULT_CODEX_MODEL_OPTIONS.reasoningEffort,
-      fastMode: typeof value?.modelOptions?.fastMode === "boolean"
-        ? value.modelOptions.fastMode
-        : DEFAULT_CODEX_MODEL_OPTIONS.fastMode,
+      fastMode:
+        typeof value?.modelOptions?.fastMode === "boolean"
+          ? value.modelOptions.fastMode
+          : DEFAULT_CODEX_MODEL_OPTIONS.fastMode,
     },
     planMode: Boolean(value?.planMode),
-  }
+  };
 }
 
-function forcePersistedCodexPreference<T extends {
-  model?: string
-  effort?: string
-  modelOptions?: Partial<CodexModelOptions>
-  planMode?: boolean
-}>(value?: T): T | undefined {
-  if (!value) return value
+export function normalizePiPreference(value?: {
+  model?: string;
+  modelOptions?: Partial<PiModelOptions>;
+  planMode?: boolean;
+}): ProviderPreference<PiModelOptions> {
+  return {
+    model: normalizePiModelId(value?.model),
+    modelOptions: {
+      thinkingLevel: isPiReasoningEffort(value?.modelOptions?.thinkingLevel)
+        ? value.modelOptions!.thinkingLevel
+        : DEFAULT_PI_MODEL_OPTIONS.thinkingLevel,
+    },
+    planMode: Boolean(value?.planMode),
+  };
+}
+
+function forcePersistedCodexPreference<
+  T extends {
+    model?: string;
+    effort?: string;
+    modelOptions?: Partial<CodexModelOptions>;
+    planMode?: boolean;
+  },
+>(value?: T): T | undefined {
+  if (!value) return value;
   return {
     ...value,
     model: "gpt-5.5",
-  }
+  };
 }
 
-function forcePersistedCodexComposerState<T extends PersistedComposerState | ComposerState>(value?: T): T | undefined {
-  if (!value || value.provider !== "codex") return value
+function forcePersistedCodexComposerState<
+  T extends PersistedComposerState | ComposerState,
+>(value?: T): T | undefined {
+  if (!value || value.provider !== "codex") return value;
   return {
     ...value,
     model: "gpt-5.5",
-  }
+  };
 }
 
 function forcePersistedCodexChatStates(
-  value?: Record<string, PersistedComposerState | ComposerState>
+  value?: Record<string, PersistedComposerState | ComposerState>,
 ): Record<string, PersistedComposerState | ComposerState> | undefined {
-  if (!value) return value
+  if (!value) return value;
 
   return Object.fromEntries(
     Object.entries(value).map(([chatId, composerState]) => [
       chatId,
       forcePersistedCodexComposerState(composerState) ?? composerState,
-    ])
-  )
+    ]),
+  );
 }
 
 export function createDefaultProviderDefaults(): ChatProviderPreferences {
@@ -189,250 +249,340 @@ export function createDefaultProviderDefaults(): ChatProviderPreferences {
       modelOptions: { ...DEFAULT_CODEX_MODEL_OPTIONS },
       planMode: false,
     },
-  }
+    pi: {
+      model: "auto",
+      modelOptions: { ...DEFAULT_PI_MODEL_OPTIONS },
+      planMode: false,
+    },
+  };
 }
 
 export function normalizeProviderDefaults(value?: {
   claude?: {
-    model?: string
-    effort?: string
-    modelOptions?: Partial<ClaudeModelOptions>
-    planMode?: boolean
-  }
+    model?: string;
+    effort?: string;
+    modelOptions?: Partial<ClaudeModelOptions>;
+    planMode?: boolean;
+  };
   codex?: {
-    model?: string
-    effort?: string
-    modelOptions?: Partial<CodexModelOptions>
-    planMode?: boolean
-  }
+    model?: string;
+    effort?: string;
+    modelOptions?: Partial<CodexModelOptions>;
+    planMode?: boolean;
+  };
+  pi?: {
+    model?: string;
+    modelOptions?: Partial<PiModelOptions>;
+    planMode?: boolean;
+  };
 }): ChatProviderPreferences {
   return {
     claude: normalizeClaudePreference(value?.claude),
     codex: normalizeCodexPreference(value?.codex),
-  }
+    pi: normalizePiPreference(value?.pi),
+  };
 }
 
 function logChatPreferences(message: string, details?: unknown) {
   if (details === undefined) {
-    console.info(`[chat-preferences] ${message}`)
-    return
+    console.info(`[chat-preferences] ${message}`);
+    return;
   }
 
-  console.info(`[chat-preferences] ${message}`, details)
+  console.info(`[chat-preferences] ${message}`, details);
 }
 
 function composerFromProviderDefaults(
   provider: AgentProvider,
-  providerDefaults: ChatProviderPreferences
+  providerDefaults: ChatProviderPreferences,
 ): ComposerState {
   if (provider === "claude") {
-    const preference = providerDefaults.claude
+    const preference = providerDefaults.claude;
     return {
       provider: "claude",
       model: preference.model,
       modelOptions: { ...preference.modelOptions },
       planMode: preference.planMode,
-    }
+    };
   }
 
-  const preference = providerDefaults.codex
+  if (provider === "pi") {
+    const preference = providerDefaults.pi;
+    return {
+      provider: "pi",
+      model: preference.model,
+      modelOptions: { ...preference.modelOptions },
+      planMode: preference.planMode,
+    };
+  }
+
+  const preference = providerDefaults.codex;
   return {
     provider: "codex",
     model: preference.model,
     modelOptions: { ...preference.modelOptions },
     planMode: preference.planMode,
-  }
+  };
 }
 
 function cloneComposerState(state: ComposerState): ComposerState {
-  return state.provider === "claude"
-    ? {
+  if (state.provider === "claude") {
+    return {
       provider: "claude",
       model: state.model,
       modelOptions: { ...state.modelOptions },
       planMode: state.planMode,
-    }
-    : {
-      provider: "codex",
+    };
+  }
+
+  if (state.provider === "pi") {
+    return {
+      provider: "pi",
       model: state.model,
       modelOptions: { ...state.modelOptions },
       planMode: state.planMode,
-    }
+    };
+  }
+
+  return {
+    provider: "codex",
+    model: state.model,
+    modelOptions: { ...state.modelOptions },
+    planMode: state.planMode,
+  };
 }
 
 function normalizeComposerState(
   value: PersistedComposerState | undefined,
   providerDefaults: ChatProviderPreferences,
   legacyLiveProvider?: AgentProvider,
-  legacyLivePreferences?: LegacyPersistedChatPreferencesState["livePreferences"]
+  legacyLivePreferences?: LegacyPersistedChatPreferencesState["livePreferences"],
 ): ComposerState {
   if (value?.provider === "claude") {
-    const preference = normalizeClaudePreference(value)
+    const preference = normalizeClaudePreference(value);
     return {
       provider: "claude",
       model: preference.model,
       modelOptions: preference.modelOptions,
       planMode: preference.planMode,
-    }
+    };
   }
 
   if (value?.provider === "codex") {
-    const preference = normalizeCodexPreference(value)
+    const preference = normalizeCodexPreference(value);
     return {
       provider: "codex",
       model: preference.model,
       modelOptions: preference.modelOptions,
       planMode: preference.planMode,
-    }
+    };
+  }
+
+  if (value?.provider === "pi") {
+    const preference = normalizePiPreference(value);
+    return {
+      provider: "pi",
+      model: preference.model,
+      modelOptions: preference.modelOptions,
+      planMode: preference.planMode,
+    };
   }
 
   if (legacyLiveProvider === "claude") {
-    const preference = normalizeClaudePreference(legacyLivePreferences?.claude)
+    const preference = normalizeClaudePreference(legacyLivePreferences?.claude);
     return {
       provider: "claude",
       model: preference.model,
       modelOptions: preference.modelOptions,
       planMode: preference.planMode,
-    }
+    };
+  }
+
+  if (legacyLiveProvider === "pi") {
+    const preference = normalizePiPreference(legacyLivePreferences?.pi);
+    return {
+      provider: "pi",
+      model: preference.model,
+      modelOptions: preference.modelOptions,
+      planMode: preference.planMode,
+    };
   }
 
   if (legacyLiveProvider === "codex") {
-    const preference = normalizeCodexPreference(legacyLivePreferences?.codex)
+    const preference = normalizeCodexPreference(legacyLivePreferences?.codex);
     return {
       provider: "codex",
       model: preference.model,
       modelOptions: preference.modelOptions,
       planMode: preference.planMode,
-    }
+    };
   }
 
-  return composerFromProviderDefaults("claude", providerDefaults)
+  return composerFromProviderDefaults("claude", providerDefaults);
 }
 
 function normalizePersistedComposerState(
   value: PersistedComposerState | ComposerState | undefined,
-  providerDefaults: ChatProviderPreferences
+  providerDefaults: ChatProviderPreferences,
 ): ComposerState | null {
-  if (!value) return null
-  return normalizeComposerState(value, providerDefaults)
+  if (!value) return null;
+  return normalizeComposerState(value, providerDefaults);
 }
 
 function normalizeChatStates(
   value: Record<string, PersistedComposerState | ComposerState> | undefined,
-  providerDefaults: ChatProviderPreferences
+  providerDefaults: ChatProviderPreferences,
 ): Record<string, ComposerState> {
-  if (!value) return {}
+  if (!value) return {};
 
   return Object.fromEntries(
     Object.entries(value).map(([chatId, composerState]) => [
       chatId,
       normalizeComposerState(composerState, providerDefaults),
-    ])
-  )
+    ]),
+  );
 }
 
 function createComposerStateForNewChat(args: {
-  defaultProvider: DefaultProviderPreference
-  providerDefaults: ChatProviderPreferences
-  sourceState?: ComposerState | null
-  legacyComposerState?: ComposerState | null
+  defaultProvider: DefaultProviderPreference;
+  providerDefaults: ChatProviderPreferences;
+  sourceState?: ComposerState | null;
+  legacyComposerState?: ComposerState | null;
 }): ComposerState {
   if (args.defaultProvider === "last_used") {
     if (args.sourceState) {
-      return cloneComposerState(args.sourceState)
+      return cloneComposerState(args.sourceState);
     }
 
     if (args.legacyComposerState) {
-      return cloneComposerState(args.legacyComposerState)
+      return cloneComposerState(args.legacyComposerState);
     }
 
-    return composerFromProviderDefaults("claude", args.providerDefaults)
+    return composerFromProviderDefaults("claude", args.providerDefaults);
   }
 
-  return composerFromProviderDefaults(args.defaultProvider, args.providerDefaults)
+  return composerFromProviderDefaults(
+    args.defaultProvider,
+    args.providerDefaults,
+  );
 }
 
 function getStoredComposerState(
-  state: Pick<ChatPreferencesState, "chatStates" | "defaultProvider" | "providerDefaults" | "legacyComposerState">,
-  chatId: string
+  state: Pick<
+    ChatPreferencesState,
+    | "chatStates"
+    | "defaultProvider"
+    | "providerDefaults"
+    | "legacyComposerState"
+  >,
+  chatId: string,
 ): ComposerState {
-  const existingState = state.chatStates[chatId]
+  const existingState = state.chatStates[chatId];
   if (existingState) {
-    return existingState
+    return existingState;
   }
 
   return createComposerStateForNewChat({
     defaultProvider: state.defaultProvider,
     providerDefaults: state.providerDefaults,
     legacyComposerState: state.legacyComposerState,
-  })
+  });
 }
 
 function withChatComposerState(
-  state: Pick<ChatPreferencesState, "chatStates" | "defaultProvider" | "providerDefaults" | "legacyComposerState">,
+  state: Pick<
+    ChatPreferencesState,
+    | "chatStates"
+    | "defaultProvider"
+    | "providerDefaults"
+    | "legacyComposerState"
+  >,
   chatId: string,
-  transform: (composerState: ComposerState) => ComposerState
+  transform: (composerState: ComposerState) => ComposerState,
 ) {
-  const currentComposerState = getStoredComposerState(state, chatId)
+  const currentComposerState = getStoredComposerState(state, chatId);
   return {
     chatStates: {
       ...state.chatStates,
       [chatId]: transform(currentComposerState),
     },
-  }
+  };
 }
 
 interface ChatPreferencesState {
-  defaultProvider: DefaultProviderPreference
-  providerDefaults: ChatProviderPreferences
-  chatStates: Record<string, ComposerState>
-  legacyComposerState: ComposerState | null
-  setDefaultProvider: (provider: DefaultProviderPreference) => void
-  setProviderDefaultModel: (provider: AgentProvider, model: string) => void
+  defaultProvider: DefaultProviderPreference;
+  providerDefaults: ChatProviderPreferences;
+  chatStates: Record<string, ComposerState>;
+  legacyComposerState: ComposerState | null;
+  setDefaultProvider: (provider: DefaultProviderPreference) => void;
+  setProviderDefaultModel: (provider: AgentProvider, model: string) => void;
   setProviderDefaultModelOptions: <TProvider extends AgentProvider>(
     provider: TProvider,
-    modelOptions: Partial<ProviderModelOptionsByProvider[TProvider]>
-  ) => void
-  setProviderDefaultPlanMode: (provider: AgentProvider, planMode: boolean) => void
-  getComposerState: (chatId: string) => ComposerState
-  initializeComposerForChat: (chatId: string, options?: { sourceState?: ComposerState | null }) => void
-  setComposerState: (chatId: string, composerState: ComposerState) => void
-  setChatComposerProvider: (chatId: string, provider: AgentProvider) => void
-  setChatComposerModel: (chatId: string, model: string) => void
+    modelOptions: Partial<ProviderModelOptionsByProvider[TProvider]>,
+  ) => void;
+  setProviderDefaultPlanMode: (
+    provider: AgentProvider,
+    planMode: boolean,
+  ) => void;
+  getComposerState: (chatId: string) => ComposerState;
+  initializeComposerForChat: (
+    chatId: string,
+    options?: { sourceState?: ComposerState | null },
+  ) => void;
+  setComposerState: (chatId: string, composerState: ComposerState) => void;
+  setChatComposerProvider: (chatId: string, provider: AgentProvider) => void;
+  setChatComposerModel: (chatId: string, model: string) => void;
   setChatComposerModelOptions: (
     chatId: string,
-    modelOptions: Partial<ClaudeModelOptions> | Partial<CodexModelOptions>
-  ) => void
-  setChatComposerPlanMode: (chatId: string, planMode: boolean) => void
-  resetChatComposerFromProvider: (chatId: string, provider: AgentProvider) => void
+    modelOptions: Partial<ClaudeModelOptions> | Partial<CodexModelOptions>,
+  ) => void;
+  setChatComposerPlanMode: (chatId: string, planMode: boolean) => void;
+  resetChatComposerFromProvider: (
+    chatId: string,
+    provider: AgentProvider,
+  ) => void;
 }
 
 export function migrateChatPreferencesState(
-  persistedState: Partial<PersistedChatPreferencesState> | undefined
-): Pick<ChatPreferencesState, "defaultProvider" | "providerDefaults" | "chatStates" | "legacyComposerState"> {
+  persistedState: Partial<PersistedChatPreferencesState> | undefined,
+): Pick<
+  ChatPreferencesState,
+  "defaultProvider" | "providerDefaults" | "chatStates" | "legacyComposerState"
+> {
   const providerDefaults = normalizeProviderDefaults({
     ...persistedState?.providerDefaults,
-    codex: forcePersistedCodexPreference(persistedState?.providerDefaults?.codex),
-  })
+    codex: forcePersistedCodexPreference(
+      persistedState?.providerDefaults?.codex,
+    ),
+  });
   const legacyComposerState = normalizePersistedComposerState(
-    forcePersistedCodexComposerState(persistedState?.legacyComposerState ?? persistedState?.composerState),
-    providerDefaults
-  )
+    forcePersistedCodexComposerState(
+      persistedState?.legacyComposerState ?? persistedState?.composerState,
+    ),
+    providerDefaults,
+  );
 
   return {
     defaultProvider: normalizeDefaultProvider(persistedState?.defaultProvider),
     providerDefaults,
-    chatStates: normalizeChatStates(forcePersistedCodexChatStates(persistedState?.chatStates), providerDefaults),
-    legacyComposerState: legacyComposerState ?? normalizeComposerState(
-      undefined,
+    chatStates: normalizeChatStates(
+      forcePersistedCodexChatStates(persistedState?.chatStates),
       providerDefaults,
-      persistedState?.liveProvider,
-      {
-        ...persistedState?.livePreferences,
-        codex: forcePersistedCodexPreference(persistedState?.livePreferences?.codex),
-      }
     ),
-  }
+    legacyComposerState:
+      legacyComposerState ??
+      normalizeComposerState(
+        undefined,
+        providerDefaults,
+        persistedState?.liveProvider,
+        {
+          ...persistedState?.livePreferences,
+          codex: forcePersistedCodexPreference(
+            persistedState?.livePreferences?.codex,
+          ),
+        },
+      ),
+  };
 }
 
 export const useChatPreferencesStore = create<ChatPreferencesState>()(
@@ -447,95 +597,108 @@ export const useChatPreferencesStore = create<ChatPreferencesState>()(
       planMode: false,
     },
     setDefaultProvider: (defaultProvider) => set({ defaultProvider }),
-      setProviderDefaultModel: (provider, model) =>
-        set((state) => ({
-          providerDefaults: {
-            ...state.providerDefaults,
-            [provider]: provider === "claude"
+    setProviderDefaultModel: (provider, model) =>
+      set((state) => ({
+        providerDefaults: {
+          ...state.providerDefaults,
+          [provider]:
+            provider === "claude"
               ? normalizeClaudePreference({
-                ...state.providerDefaults.claude,
-                model,
-              })
+                  ...state.providerDefaults.claude,
+                  model,
+                })
               : normalizeCodexPreference({
-                ...state.providerDefaults.codex,
-                model,
-              }),
-          },
-        })),
-      setProviderDefaultModelOptions: (provider, modelOptions) =>
-        set((state) => ({
-          providerDefaults: {
-            ...state.providerDefaults,
-            [provider]: provider === "claude"
+                  ...state.providerDefaults.codex,
+                  model,
+                }),
+        },
+      })),
+    setProviderDefaultModelOptions: (provider, modelOptions) =>
+      set((state) => ({
+        providerDefaults: {
+          ...state.providerDefaults,
+          [provider]:
+            provider === "claude"
               ? normalizeClaudePreference({
-                ...state.providerDefaults.claude,
-                modelOptions: {
-                  ...state.providerDefaults.claude.modelOptions,
-                  ...modelOptions as Partial<ClaudeModelOptions>,
-                },
-              })
+                  ...state.providerDefaults.claude,
+                  modelOptions: {
+                    ...state.providerDefaults.claude.modelOptions,
+                    ...(modelOptions as Partial<ClaudeModelOptions>),
+                  },
+                })
               : normalizeCodexPreference({
-                ...state.providerDefaults.codex,
-                modelOptions: {
-                  ...state.providerDefaults.codex.modelOptions,
-                  ...modelOptions as Partial<CodexModelOptions>,
-                },
-              }),
+                  ...state.providerDefaults.codex,
+                  modelOptions: {
+                    ...state.providerDefaults.codex.modelOptions,
+                    ...(modelOptions as Partial<CodexModelOptions>),
+                  },
+                }),
+        },
+      })),
+    setProviderDefaultPlanMode: (provider, planMode) =>
+      set((state) => ({
+        providerDefaults: {
+          ...state.providerDefaults,
+          [provider]: {
+            ...state.providerDefaults[provider],
+            planMode,
           },
-        })),
-      setProviderDefaultPlanMode: (provider, planMode) =>
-        set((state) => ({
-          providerDefaults: {
-            ...state.providerDefaults,
-            [provider]: {
-              ...state.providerDefaults[provider],
-              planMode,
-            },
-          },
-        })),
-      getComposerState: (chatId) => cloneComposerState(getStoredComposerState(get(), chatId)),
-      initializeComposerForChat: (chatId, options) =>
-        set((state) => {
-          if (state.chatStates[chatId]) {
-            return state
-          }
+        },
+      })),
+    getComposerState: (chatId) =>
+      cloneComposerState(getStoredComposerState(get(), chatId)),
+    initializeComposerForChat: (chatId, options) =>
+      set((state) => {
+        if (state.chatStates[chatId]) {
+          return state;
+        }
 
-          const composerState = createComposerStateForNewChat({
-            defaultProvider: state.defaultProvider,
-            providerDefaults: state.providerDefaults,
-            sourceState: options?.sourceState,
-            legacyComposerState: state.legacyComposerState,
-          })
+        const composerState = createComposerStateForNewChat({
+          defaultProvider: state.defaultProvider,
+          providerDefaults: state.providerDefaults,
+          sourceState: options?.sourceState,
+          legacyComposerState: state.legacyComposerState,
+        });
 
-          logChatPreferences("initializeComposerForChat", { chatId, composerState })
+        logChatPreferences("initializeComposerForChat", {
+          chatId,
+          composerState,
+        });
 
-          return {
-            chatStates: {
-              ...state.chatStates,
-              [chatId]: composerState,
-            },
-          }
-        }),
-      setComposerState: (chatId, composerState) =>
-        set((state) => ({
+        return {
           chatStates: {
             ...state.chatStates,
-            [chatId]: composerState.provider === "claude"
-              ? {
-                provider: "claude",
-                model: normalizeClaudePreference(composerState).model,
-                modelOptions: normalizeClaudePreference(composerState).modelOptions,
-                planMode: composerState.planMode,
-              }
-              : cloneComposerState(composerState),
+            [chatId]: composerState,
           },
-        })),
-      setChatComposerProvider: (chatId, provider) =>
-        set((state) => withChatComposerState(state, chatId, () => composerFromProviderDefaults(provider, state.providerDefaults))),
-      setChatComposerModel: (chatId, model) =>
-        set((state) => withChatComposerState(state, chatId, (composerState) => (
-          composerState.provider === "claude"
-            ? {
+        };
+      }),
+    setComposerState: (chatId, composerState) =>
+      set((state) => ({
+        chatStates: {
+          ...state.chatStates,
+          [chatId]:
+            composerState.provider === "claude"
+              ? {
+                  provider: "claude",
+                  model: normalizeClaudePreference(composerState).model,
+                  modelOptions:
+                    normalizeClaudePreference(composerState).modelOptions,
+                  planMode: composerState.planMode,
+                }
+              : cloneComposerState(composerState),
+        },
+      })),
+    setChatComposerProvider: (chatId, provider) =>
+      set((state) =>
+        withChatComposerState(state, chatId, () =>
+          composerFromProviderDefaults(provider, state.providerDefaults),
+        ),
+      ),
+    setChatComposerModel: (chatId, model) =>
+      set((state) =>
+        withChatComposerState(state, chatId, (composerState) => {
+          if (composerState.provider === "claude") {
+            return {
               provider: "claude",
               model: normalizeClaudePreference({
                 ...composerState,
@@ -546,56 +709,95 @@ export const useChatPreferencesStore = create<ChatPreferencesState>()(
                 model,
               }).modelOptions,
               planMode: composerState.planMode,
-            }
-            : {
-              provider: "codex",
+            };
+          }
+
+          if (composerState.provider === "pi") {
+            return {
+              provider: "pi",
               model,
-              modelOptions: normalizeCodexPreference({
+              modelOptions: normalizePiPreference({
                 ...composerState,
                 model,
               }).modelOptions,
               planMode: composerState.planMode,
-            }
-        ))),
-      setChatComposerModelOptions: (chatId, modelOptions) =>
-        set((state) => withChatComposerState(state, chatId, (composerState) => (
-          composerState.provider === "claude"
-            ? {
+            };
+          }
+
+          return {
+            provider: "codex",
+            model,
+            modelOptions: normalizeCodexPreference({
+              ...composerState,
+              model,
+            }).modelOptions,
+            planMode: composerState.planMode,
+          };
+        }),
+      ),
+    setChatComposerModelOptions: (chatId, modelOptions) =>
+      set((state) =>
+        withChatComposerState(state, chatId, (composerState) => {
+          if (composerState.provider === "claude") {
+            return {
               provider: "claude",
               model: composerState.model,
               modelOptions: normalizeClaudePreference({
                 ...composerState,
                 modelOptions: {
                   ...composerState.modelOptions,
-                  ...modelOptions as Partial<ClaudeModelOptions>,
+                  ...(modelOptions as Partial<ClaudeModelOptions>),
                 },
               }).modelOptions,
               planMode: composerState.planMode,
-            }
-            : {
-              provider: "codex",
+            };
+          }
+
+          if (composerState.provider === "pi") {
+            return {
+              provider: "pi",
               model: composerState.model,
-              modelOptions: normalizeCodexPreference({
+              modelOptions: normalizePiPreference({
                 ...composerState,
                 modelOptions: {
                   ...composerState.modelOptions,
-                  ...modelOptions as Partial<CodexModelOptions>,
+                  ...(modelOptions as Partial<PiModelOptions>),
                 },
               }).modelOptions,
               planMode: composerState.planMode,
-            }
-        ))),
-      setChatComposerPlanMode: (chatId, planMode) =>
-        set((state) => withChatComposerState(state, chatId, (composerState) => ({
+            };
+          }
+
+          return {
+            provider: "codex",
+            model: composerState.model,
+            modelOptions: normalizeCodexPreference({
+              ...composerState,
+              modelOptions: {
+                ...composerState.modelOptions,
+                ...(modelOptions as Partial<CodexModelOptions>),
+              },
+            }).modelOptions,
+            planMode: composerState.planMode,
+          };
+        }),
+      ),
+    setChatComposerPlanMode: (chatId, planMode) =>
+      set((state) =>
+        withChatComposerState(state, chatId, (composerState) => ({
           ...composerState,
           planMode,
-        }))),
-      resetChatComposerFromProvider: (chatId, provider) =>
-        set((state) => ({
-          chatStates: {
-            ...state.chatStates,
-            [chatId]: composerFromProviderDefaults(provider, state.providerDefaults),
-          },
         })),
-  })
-)
+      ),
+    resetChatComposerFromProvider: (chatId, provider) =>
+      set((state) => ({
+        chatStates: {
+          ...state.chatStates,
+          [chatId]: composerFromProviderDefaults(
+            provider,
+            state.providerDefaults,
+          ),
+        },
+      })),
+  }),
+);

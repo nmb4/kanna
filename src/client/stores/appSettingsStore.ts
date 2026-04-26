@@ -1,19 +1,23 @@
-import { create } from "zustand"
-import type { AppSettingsPatch, AppSettingsSnapshot } from "../../shared/types"
+import { create } from "zustand";
+import type {
+  AppSettingsPatch,
+  AppSettingsSnapshot,
+  PiModelOptions,
+} from "../../shared/types";
 
-type AppSettingsHydrationStatus = "idle" | "loading" | "ready" | "error"
+type AppSettingsHydrationStatus = "idle" | "loading" | "ready" | "error";
 
 interface AppSettingsStoreState {
-  settings: AppSettingsSnapshot | null
-  hydrationStatus: AppSettingsHydrationStatus
-  setHydrationStatus: (status: AppSettingsHydrationStatus) => void
-  setFromServer: (settings: AppSettingsSnapshot) => void
-  applyOptimisticPatch: (patch: AppSettingsPatch) => void
+  settings: AppSettingsSnapshot | null;
+  hydrationStatus: AppSettingsHydrationStatus;
+  setHydrationStatus: (status: AppSettingsHydrationStatus) => void;
+  setFromServer: (settings: AppSettingsSnapshot) => void;
+  applyOptimisticPatch: (patch: AppSettingsPatch) => void;
 }
 
 export function mergeAppSettingsPatch(
   settings: AppSettingsSnapshot,
-  patch: AppSettingsPatch
+  patch: AppSettingsPatch,
 ): AppSettingsSnapshot {
   return {
     ...settings,
@@ -43,8 +47,16 @@ export function mergeAppSettingsPatch(
           ...patch.providerDefaults?.codex?.modelOptions,
         },
       },
+      pi: {
+        ...settings.providerDefaults.pi,
+        ...patch.providerDefaults?.pi,
+        modelOptions: {
+          ...settings.providerDefaults.pi.modelOptions,
+          ...patch.providerDefaults?.pi?.modelOptions,
+        } as PiModelOptions,
+      },
     },
-  }
+  };
 }
 
 export const useAppSettingsStore = create<AppSettingsStoreState>()((set) => ({
@@ -54,6 +66,8 @@ export const useAppSettingsStore = create<AppSettingsStoreState>()((set) => ({
   setFromServer: (settings) => set({ settings, hydrationStatus: "ready" }),
   applyOptimisticPatch: (patch) =>
     set((state) => ({
-      settings: state.settings ? mergeAppSettingsPatch(state.settings, patch) : state.settings,
+      settings: state.settings
+        ? mergeAppSettingsPatch(state.settings, patch)
+        : state.settings,
     })),
-}))
+}));

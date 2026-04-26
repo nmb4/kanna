@@ -1,46 +1,51 @@
-import { describe, expect, test } from "bun:test"
-import { mkdtemp, rm } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import path from "node:path"
-import type { AppSettingsSnapshot, KeybindingsSnapshot, LlmProviderSnapshot, UpdateSnapshot } from "../shared/types"
-import { PROTOCOL_VERSION } from "../shared/types"
-import { createEmptyState } from "./events"
-import { createWsRouter } from "./ws-router"
+import { describe, expect, test } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import type {
+  AppSettingsSnapshot,
+  KeybindingsSnapshot,
+  LlmProviderSnapshot,
+  UpdateSnapshot,
+} from "../shared/types";
+import { PROTOCOL_VERSION } from "../shared/types";
+import { createEmptyState } from "./events";
+import { createWsRouter } from "./ws-router";
 
 function withSidebarGroupDefaults(group: {
-  groupKey: string
-  localPath: string
+  groupKey: string;
+  localPath: string;
   chats: Array<{
-    _id: string
-    _creationTime: number
-    chatId: string
-    title: string
-    status: "idle" | "starting" | "running" | "waiting_for_user" | "failed"
-    unread: boolean
-    localPath: string
-    provider: "claude" | "codex" | null
-    lastMessageAt?: number
-    canFork?: boolean
-    hasAutomation: boolean
-  }>
+    _id: string;
+    _creationTime: number;
+    chatId: string;
+    title: string;
+    status: "idle" | "starting" | "running" | "waiting_for_user" | "failed";
+    unread: boolean;
+    localPath: string;
+    provider: "claude" | "codex" | null;
+    lastMessageAt?: number;
+    canFork?: boolean;
+    hasAutomation: boolean;
+  }>;
 }) {
   return {
     ...group,
     previewChats: group.chats,
     olderChats: [],
     defaultCollapsed: true,
-  }
+  };
 }
 
 class FakeWebSocket {
-  readonly sent: unknown[] = []
+  readonly sent: unknown[] = [];
   readonly data = {
     subscriptions: new Map(),
     protectedDraftChatIds: new Set<string>(),
-  }
+  };
 
   send(message: string) {
-    this.sent.push(JSON.parse(message))
+    this.sent.push(JSON.parse(message));
   }
 }
 
@@ -57,7 +62,7 @@ const DEFAULT_KEYBINDINGS_SNAPSHOT: KeybindingsSnapshot = {
   },
   warning: null,
   filePathDisplay: "~/.kanna/keybindings.json",
-}
+};
 
 const DEFAULT_APP_SETTINGS_SNAPSHOT: AppSettingsSnapshot = {
   analyticsEnabled: true,
@@ -91,10 +96,17 @@ const DEFAULT_APP_SETTINGS_SNAPSHOT: AppSettingsSnapshot = {
       },
       planMode: false,
     },
+    pi: {
+      model: "auto",
+      modelOptions: {
+        thinkingLevel: "high",
+      },
+      planMode: false,
+    },
   },
   warning: null,
   filePathDisplay: "~/.kanna/data/settings.json",
-}
+};
 
 const DEFAULT_UPDATE_SNAPSHOT: UpdateSnapshot = {
   currentVersion: "0.12.0",
@@ -105,7 +117,7 @@ const DEFAULT_UPDATE_SNAPSHOT: UpdateSnapshot = {
   error: null,
   installAction: "restart",
   reloadRequestedAt: null,
-}
+};
 
 const DEFAULT_LLM_PROVIDER_SNAPSHOT: LlmProviderSnapshot = {
   provider: "openai",
@@ -116,13 +128,16 @@ const DEFAULT_LLM_PROVIDER_SNAPSHOT: LlmProviderSnapshot = {
   enabled: false,
   warning: null,
   filePathDisplay: "~/.kanna/llm-provider.json",
-}
+};
 
 describe("ws-router", () => {
   test("acks system.ping without broadcasting snapshots", async () => {
     const router = createWsRouter({
       store: { state: createEmptyState() } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -135,11 +150,11 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
-    ws.data.subscriptions.set("sub-1", { type: "sidebar" })
+    ws.data.subscriptions.set("sub-1", { type: "sidebar" });
     await router.handleMessage(
       ws as never,
       JSON.stringify({
@@ -147,8 +162,8 @@ describe("ws-router", () => {
         type: "command",
         id: "ping-1",
         command: { type: "system.ping" },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent).toEqual([
       {
@@ -156,14 +171,19 @@ describe("ws-router", () => {
         type: "ack",
         id: "ping-1",
       },
-    ])
-  })
+    ]);
+  });
 
   test("reads and writes llm provider settings via commands", async () => {
-    const writes: Array<Pick<LlmProviderSnapshot, "provider" | "apiKey" | "model" | "baseUrl">> = []
+    const writes: Array<
+      Pick<LlmProviderSnapshot, "provider" | "apiKey" | "model" | "baseUrl">
+    > = [];
     const router = createWsRouter({
       store: { state: createEmptyState() } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -175,13 +195,16 @@ describe("ws-router", () => {
       llmProvider: {
         read: async () => DEFAULT_LLM_PROVIDER_SNAPSHOT,
         write: async (value) => {
-          writes.push(value)
+          writes.push(value);
           return {
             ...DEFAULT_LLM_PROVIDER_SNAPSHOT,
             ...value,
-            resolvedBaseUrl: value.provider === "custom" ? value.baseUrl : "https://api.openai.com/v1",
+            resolvedBaseUrl:
+              value.provider === "custom"
+                ? value.baseUrl
+                : "https://api.openai.com/v1",
             enabled: Boolean(value.apiKey && value.model),
-          }
+          };
         },
         validate: async () => ({
           ok: true,
@@ -192,9 +215,9 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
     await router.handleMessage(
       ws as never,
@@ -203,8 +226,8 @@ describe("ws-router", () => {
         type: "command",
         id: "llm-read-1",
         command: { type: "settings.readLlmProvider" },
-      })
-    )
+      }),
+    );
 
     await router.handleMessage(
       ws as never,
@@ -219,8 +242,8 @@ describe("ws-router", () => {
           model: "gpt-test",
           baseUrl: "https://example.com/v1",
         },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent).toEqual([
       {
@@ -243,21 +266,26 @@ describe("ws-router", () => {
           enabled: true,
         },
       },
-    ])
-    expect(writes).toEqual([{
-      provider: "custom",
-      apiKey: "test-key",
-      model: "gpt-test",
-      baseUrl: "https://example.com/v1",
-    }])
-  })
+    ]);
+    expect(writes).toEqual([
+      {
+        provider: "custom",
+        apiKey: "test-key",
+        model: "gpt-test",
+        baseUrl: "https://example.com/v1",
+      },
+    ]);
+  });
 
   test("reads and writes app settings via commands", async () => {
-    const writes: Array<{ analyticsEnabled: boolean }> = []
-    let analyticsEnabled = DEFAULT_APP_SETTINGS_SNAPSHOT.analyticsEnabled
+    const writes: Array<{ analyticsEnabled: boolean }> = [];
+    let analyticsEnabled = DEFAULT_APP_SETTINGS_SNAPSHOT.analyticsEnabled;
     const router = createWsRouter({
       store: { state: createEmptyState() } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -272,21 +300,21 @@ describe("ws-router", () => {
           analyticsEnabled,
         }),
         write: async (value) => {
-          writes.push(value)
-          analyticsEnabled = value.analyticsEnabled
+          writes.push(value);
+          analyticsEnabled = value.analyticsEnabled;
           return {
             ...DEFAULT_APP_SETTINGS_SNAPSHOT,
             analyticsEnabled: value.analyticsEnabled,
-          }
+          };
         },
       },
       refreshDiscovery: async () => [],
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
     await router.handleMessage(
       ws as never,
@@ -295,8 +323,8 @@ describe("ws-router", () => {
         type: "command",
         id: "settings-read-1",
         command: { type: "settings.readAppSettings" },
-      })
-    )
+      }),
+    );
 
     await router.handleMessage(
       ws as never,
@@ -308,8 +336,8 @@ describe("ws-router", () => {
           type: "settings.writeAppSettings",
           analyticsEnabled: false,
         },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent).toEqual([
       {
@@ -327,16 +355,19 @@ describe("ws-router", () => {
           analyticsEnabled: false,
         },
       },
-    ])
-    expect(writes).toEqual([{ analyticsEnabled: false }])
-  })
+    ]);
+    expect(writes).toEqual([{ analyticsEnabled: false }]);
+  });
 
   test("subscribes to app settings and writes patches through the router", async () => {
-    let snapshot: AppSettingsSnapshot = DEFAULT_APP_SETTINGS_SNAPSHOT
-    let listener: ((nextSnapshot: AppSettingsSnapshot) => void) | null = null
+    let snapshot: AppSettingsSnapshot = DEFAULT_APP_SETTINGS_SNAPSHOT;
+    let listener: ((nextSnapshot: AppSettingsSnapshot) => void) | null = null;
     const router = createWsRouter({
       store: { state: createEmptyState() } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -348,38 +379,41 @@ describe("ws-router", () => {
       appSettings: {
         getSnapshot: () => snapshot,
         write: async (value) => {
-          snapshot = { ...snapshot, analyticsEnabled: value.analyticsEnabled }
-          return snapshot
+          snapshot = { ...snapshot, analyticsEnabled: value.analyticsEnabled };
+          return snapshot;
         },
         writePatch: async (patch) => {
           snapshot = {
             ...snapshot,
-            analyticsEnabled: patch.analyticsEnabled ?? snapshot.analyticsEnabled,
-            browserSettingsMigrated: patch.browserSettingsMigrated ?? snapshot.browserSettingsMigrated,
+            analyticsEnabled:
+              patch.analyticsEnabled ?? snapshot.analyticsEnabled,
+            browserSettingsMigrated:
+              patch.browserSettingsMigrated ?? snapshot.browserSettingsMigrated,
             theme: patch.theme ?? snapshot.theme,
-            chatSoundPreference: patch.chatSoundPreference ?? snapshot.chatSoundPreference,
+            chatSoundPreference:
+              patch.chatSoundPreference ?? snapshot.chatSoundPreference,
             chatSoundId: patch.chatSoundId ?? snapshot.chatSoundId,
             defaultProvider: patch.defaultProvider ?? snapshot.defaultProvider,
             terminal: { ...snapshot.terminal, ...patch.terminal },
             editor: { ...snapshot.editor, ...patch.editor },
-          }
-          listener?.(snapshot)
-          return snapshot
+          };
+          listener?.(snapshot);
+          return snapshot;
         },
         onChange: (nextListener) => {
-          listener = nextListener
+          listener = nextListener;
           return () => {
-            listener = null
-          }
+            listener = null;
+          };
         },
       },
       refreshDiscovery: async () => [],
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
     await router.handleMessage(
       ws as never,
@@ -388,8 +422,8 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "app-settings-sub-1",
         topic: { type: "app-settings" },
-      })
-    )
+      }),
+    );
 
     await router.handleMessage(
       ws as never,
@@ -404,8 +438,8 @@ describe("ws-router", () => {
             terminal: { scrollbackLines: 2_000 },
           },
         },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent).toEqual([
       {
@@ -446,15 +480,18 @@ describe("ws-router", () => {
           },
         },
       },
-    ])
-  })
+    ]);
+  });
 
   test("tracks analytics preference transitions in the correct order", async () => {
-    const analyticsEvents: string[] = []
-    let analyticsEnabled = true
+    const analyticsEvents: string[] = [];
+    let analyticsEnabled = true;
     const router = createWsRouter({
       store: { state: createEmptyState() } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -469,16 +506,16 @@ describe("ws-router", () => {
           analyticsEnabled,
         }),
         write: async (value) => {
-          analyticsEnabled = value.analyticsEnabled
+          analyticsEnabled = value.analyticsEnabled;
           return {
             ...DEFAULT_APP_SETTINGS_SNAPSHOT,
             analyticsEnabled: value.analyticsEnabled,
-          }
+          };
         },
       },
       analytics: {
         track: (eventName: string) => {
-          analyticsEvents.push(eventName)
+          analyticsEvents.push(eventName);
         },
         trackLaunch: () => {},
       },
@@ -486,8 +523,8 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
+    });
+    const ws = new FakeWebSocket();
 
     await router.handleMessage(
       ws as never,
@@ -499,8 +536,8 @@ describe("ws-router", () => {
           type: "settings.writeAppSettings",
           analyticsEnabled: false,
         },
-      })
-    )
+      }),
+    );
 
     await router.handleMessage(
       ws as never,
@@ -512,8 +549,8 @@ describe("ws-router", () => {
           type: "settings.writeAppSettings",
           analyticsEnabled: true,
         },
-      })
-    )
+      }),
+    );
 
     await router.handleMessage(
       ws as never,
@@ -525,19 +562,21 @@ describe("ws-router", () => {
           type: "settings.writeAppSettings",
           analyticsEnabled: true,
         },
-      })
-    )
+      }),
+    );
 
     expect(analyticsEvents).toEqual([
       "analytics_disabled",
       "analytics_enabled",
-    ])
-  })
+    ]);
+  });
 
   test("tracks project lifecycle analytics", async () => {
-    const analyticsEvents: string[] = []
-    const state = createEmptyState()
-    const projectPath = await mkdtemp(path.join(tmpdir(), "kanna-router-project-"))
+    const analyticsEvents: string[] = [];
+    const state = createEmptyState();
+    const projectPath = await mkdtemp(
+      path.join(tmpdir(), "kanna-router-project-"),
+    );
 
     try {
       const router = createWsRouter({
@@ -551,10 +590,10 @@ describe("ws-router", () => {
               createdAt: Date.now(),
               updatedAt: Date.now(),
               deletedAt: null,
-            }
-            state.projectsById.set(project.id, project as never)
-            state.projectIdsByPath.set(localPath, project.id)
-            return project
+            };
+            state.projectsById.set(project.id, project as never);
+            state.projectIdsByPath.set(localPath, project.id);
+            return project;
           },
           getProject: () => ({
             id: "project-1",
@@ -571,7 +610,7 @@ describe("ws-router", () => {
         } as never,
         analytics: {
           track: (eventName: string) => {
-            analyticsEvents.push(eventName)
+            analyticsEvents.push(eventName);
           },
           trackLaunch: () => {},
         },
@@ -588,8 +627,8 @@ describe("ws-router", () => {
         getDiscoveredProjects: () => [],
         machineDisplayName: "Local Machine",
         updateManager: null,
-      })
-      const ws = new FakeWebSocket()
+      });
+      const ws = new FakeWebSocket();
 
       await router.handleMessage(
         ws as never,
@@ -597,9 +636,13 @@ describe("ws-router", () => {
           v: 1,
           type: "command",
           id: "project-create-1",
-          command: { type: "project.create", localPath: projectPath, title: "Project" },
-        })
-      )
+          command: {
+            type: "project.create",
+            localPath: projectPath,
+            title: "Project",
+          },
+        }),
+      );
 
       await router.handleMessage(
         ws as never,
@@ -608,8 +651,8 @@ describe("ws-router", () => {
           type: "command",
           id: "project-remove-1",
           command: { type: "project.remove", projectId: "project-1" },
-        })
-      )
+        }),
+      );
 
       expect(analyticsEvents).toEqual([
         "project_opened",
@@ -617,16 +660,19 @@ describe("ws-router", () => {
         "project_removed",
         "chat_deleted",
         "chat_deleted",
-      ])
+      ]);
     } finally {
-      await rm(projectPath, { recursive: true, force: true })
+      await rm(projectPath, { recursive: true, force: true });
     }
-  })
+  });
 
   test("acks terminal.input without rebroadcasting terminal snapshots", async () => {
     const router = createWsRouter({
       store: { state: createEmptyState() } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -640,10 +686,13 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
+    });
+    const ws = new FakeWebSocket();
 
-    ws.data.subscriptions.set("sub-terminal", { type: "terminal", terminalId: "terminal-1" })
+    ws.data.subscriptions.set("sub-terminal", {
+      type: "terminal",
+      terminalId: "terminal-1",
+    });
     await router.handleMessage(
       ws as never,
       JSON.stringify({
@@ -655,8 +704,8 @@ describe("ws-router", () => {
           terminalId: "terminal-1",
           data: "ls\r",
         },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent).toEqual([
       {
@@ -664,13 +713,16 @@ describe("ws-router", () => {
         type: "ack",
         id: "terminal-input-1",
       },
-    ])
-  })
+    ]);
+  });
 
   test("subscribes and unsubscribes chat topics", async () => {
     const router = createWsRouter({
       store: { state: createEmptyState() } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -683,9 +735,9 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
     await router.handleMessage(
       ws as never,
@@ -694,8 +746,8 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "chat-sub-1",
         topic: { type: "chat", chatId: "chat-1" },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent[0]).toEqual({
       v: PROTOCOL_VERSION,
@@ -705,7 +757,7 @@ describe("ws-router", () => {
         type: "chat",
         data: null,
       },
-    })
+    });
 
     await router.handleMessage(
       ws as never,
@@ -713,33 +765,33 @@ describe("ws-router", () => {
         v: 1,
         type: "unsubscribe",
         id: "chat-sub-1",
-      })
-    )
+      }),
+    );
 
     expect(ws.sent[1]).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
       id: "chat-sub-1",
-    })
-  })
+    });
+  });
 
   test("reuses one sidebar derivation across sockets in the same broadcast pass", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
+    });
 
-    let activeStatusCalls = 0
+    let activeStatusCalls = 0;
     const router = createWsRouter({
       store: { state } as never,
       agent: {
         getActiveStatuses: () => {
-          activeStatusCalls += 1
-          return new Map()
+          activeStatusCalls += 1;
+          return new Map();
         },
         getDrainingChatIds: () => new Set(),
       } as never,
@@ -755,31 +807,31 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
+    });
 
-    const wsA = new FakeWebSocket()
-    const wsB = new FakeWebSocket()
-    router.handleOpen(wsA as never)
-    router.handleOpen(wsB as never)
-    wsA.data.subscriptions.set("sidebar-a", { type: "sidebar" })
-    wsB.data.subscriptions.set("sidebar-b", { type: "sidebar" })
+    const wsA = new FakeWebSocket();
+    const wsB = new FakeWebSocket();
+    router.handleOpen(wsA as never);
+    router.handleOpen(wsB as never);
+    wsA.data.subscriptions.set("sidebar-a", { type: "sidebar" });
+    wsB.data.subscriptions.set("sidebar-b", { type: "sidebar" });
 
-    await router.broadcastSnapshots()
+    await router.broadcastSnapshots();
 
-    expect(activeStatusCalls).toBe(1)
-    expect(wsA.sent).toHaveLength(1)
-    expect(wsB.sent).toHaveLength(1)
-  })
+    expect(activeStatusCalls).toBe(1);
+    expect(wsA.sent).toHaveLength(1);
+    expect(wsB.sent).toHaveLength(1);
+  });
 
   test("subscribes to project git snapshots independently from chat snapshots", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
+    });
 
     const router = createWsRouter({
       store: {
@@ -794,19 +846,58 @@ describe("ws-router", () => {
           branchHistory: { entries: [] },
         }),
         refreshSnapshot: async () => false,
-        listBranches: async () => ({ recent: [], local: [], remote: [], pullRequests: [], pullRequestsStatus: "unavailable" }),
-        previewMergeBranch: async () => ({ currentBranchName: "main", targetBranchName: "feature/test", targetDisplayName: "feature/test", status: "mergeable", commitCount: 1, hasConflicts: false, message: "ready" }),
-        mergeBranch: async () => ({ ok: true, branchName: "main", snapshotChanged: false }),
-        syncBranch: async () => ({ ok: true, action: "fetch", snapshotChanged: false }),
+        listBranches: async () => ({
+          recent: [],
+          local: [],
+          remote: [],
+          pullRequests: [],
+          pullRequestsStatus: "unavailable",
+        }),
+        previewMergeBranch: async () => ({
+          currentBranchName: "main",
+          targetBranchName: "feature/test",
+          targetDisplayName: "feature/test",
+          status: "mergeable",
+          commitCount: 1,
+          hasConflicts: false,
+          message: "ready",
+        }),
+        mergeBranch: async () => ({
+          ok: true,
+          branchName: "main",
+          snapshotChanged: false,
+        }),
+        syncBranch: async () => ({
+          ok: true,
+          action: "fetch",
+          snapshotChanged: false,
+        }),
         checkoutBranch: async () => ({ ok: true, snapshotChanged: false }),
-        createBranch: async () => ({ ok: true, branchName: "main", snapshotChanged: false }),
-        generateCommitMessage: async () => ({ subject: "", body: "", usedFallback: true, failureMessage: null }),
-        commitFiles: async () => ({ ok: true, mode: "commit_only", pushed: false, snapshotChanged: false }),
+        createBranch: async () => ({
+          ok: true,
+          branchName: "main",
+          snapshotChanged: false,
+        }),
+        generateCommitMessage: async () => ({
+          subject: "",
+          body: "",
+          usedFallback: true,
+          failureMessage: null,
+        }),
+        commitFiles: async () => ({
+          ok: true,
+          mode: "commit_only",
+          pushed: false,
+          snapshotChanged: false,
+        }),
         discardFile: async () => ({ snapshotChanged: false }),
         ignoreFile: async () => ({ snapshotChanged: false }),
         readPatch: async () => ({ patch: "" }),
       } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -819,9 +910,9 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
     await router.handleMessage(
       ws as never,
@@ -830,8 +921,8 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "project-git-sub-1",
         topic: { type: "project-git", projectId: "project-1" },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent[0]).toEqual({
       v: PROTOCOL_VERSION,
@@ -846,40 +937,80 @@ describe("ws-router", () => {
           branchHistory: { entries: [] },
         },
       },
-    })
-  })
+    });
+  });
 
   test("reads diff patches through the project-scoped command", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
+    });
 
     const router = createWsRouter({
       store: {
         state,
-        getProject: (projectId: string) => state.projectsById.get(projectId) ?? null,
+        getProject: (projectId: string) =>
+          state.projectsById.get(projectId) ?? null,
       } as never,
       diffStore: {
         getProjectSnapshot: () => null,
         refreshSnapshot: async () => false,
-        listBranches: async () => ({ recent: [], local: [], remote: [], pullRequests: [], pullRequestsStatus: "unavailable" }),
-        previewMergeBranch: async () => ({ currentBranchName: "main", targetBranchName: "feature/test", targetDisplayName: "feature/test", status: "mergeable", commitCount: 1, hasConflicts: false, message: "ready" }),
-        mergeBranch: async () => ({ ok: true, branchName: "main", snapshotChanged: false }),
-        syncBranch: async () => ({ ok: true, action: "fetch", snapshotChanged: false }),
+        listBranches: async () => ({
+          recent: [],
+          local: [],
+          remote: [],
+          pullRequests: [],
+          pullRequestsStatus: "unavailable",
+        }),
+        previewMergeBranch: async () => ({
+          currentBranchName: "main",
+          targetBranchName: "feature/test",
+          targetDisplayName: "feature/test",
+          status: "mergeable",
+          commitCount: 1,
+          hasConflicts: false,
+          message: "ready",
+        }),
+        mergeBranch: async () => ({
+          ok: true,
+          branchName: "main",
+          snapshotChanged: false,
+        }),
+        syncBranch: async () => ({
+          ok: true,
+          action: "fetch",
+          snapshotChanged: false,
+        }),
         checkoutBranch: async () => ({ ok: true, snapshotChanged: false }),
-        createBranch: async () => ({ ok: true, branchName: "main", snapshotChanged: false }),
-        generateCommitMessage: async () => ({ subject: "", body: "", usedFallback: true, failureMessage: null }),
-        commitFiles: async () => ({ ok: true, mode: "commit_only", pushed: false, snapshotChanged: false }),
+        createBranch: async () => ({
+          ok: true,
+          branchName: "main",
+          snapshotChanged: false,
+        }),
+        generateCommitMessage: async () => ({
+          subject: "",
+          body: "",
+          usedFallback: true,
+          failureMessage: null,
+        }),
+        commitFiles: async () => ({
+          ok: true,
+          mode: "commit_only",
+          pushed: false,
+          snapshotChanged: false,
+        }),
         discardFile: async () => ({ snapshotChanged: false }),
         ignoreFile: async () => ({ snapshotChanged: false }),
         readPatch: async () => ({ patch: "diff --git a/app.txt b/app.txt" }),
       } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -892,9 +1023,9 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
     await router.handleMessage(
       ws as never,
@@ -907,26 +1038,26 @@ describe("ws-router", () => {
           projectId: "project-1",
           path: "app.txt",
         },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent[0]).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
       id: "read-patch-1",
       result: { patch: "diff --git a/app.txt b/app.txt" },
-    })
-  })
+    });
+  });
 
   test("routes merge preview and merge commands through the diff store", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
+    });
     state.chatsById.set("chat-1", {
       id: "chat-1",
       projectId: "project-1",
@@ -938,30 +1069,75 @@ describe("ws-router", () => {
       planMode: false,
       sessionToken: null,
       lastTurnOutcome: null,
-    })
+    });
 
     const router = createWsRouter({
       store: {
         state,
-        getProject: (projectId: string) => state.projectsById.get(projectId) ?? null,
+        getProject: (projectId: string) =>
+          state.projectsById.get(projectId) ?? null,
         getChat: (chatId: string) => state.chatsById.get(chatId) ?? null,
       } as never,
       diffStore: {
-        getProjectSnapshot: () => ({ status: "ready", branchName: "main", files: [], branchHistory: { entries: [] } }),
+        getProjectSnapshot: () => ({
+          status: "ready",
+          branchName: "main",
+          files: [],
+          branchHistory: { entries: [] },
+        }),
         refreshSnapshot: async () => false,
-        listBranches: async () => ({ recent: [], local: [], remote: [], pullRequests: [], pullRequestsStatus: "unavailable" }),
-        previewMergeBranch: async () => ({ currentBranchName: "main", targetBranchName: "feature/test", targetDisplayName: "feature/test", status: "mergeable", commitCount: 2, hasConflicts: false, message: "2 commits from feature/test will merge into main." }),
-        mergeBranch: async () => ({ ok: true, branchName: "main", snapshotChanged: true }),
-        syncBranch: async () => ({ ok: true, action: "fetch", snapshotChanged: false }),
+        listBranches: async () => ({
+          recent: [],
+          local: [],
+          remote: [],
+          pullRequests: [],
+          pullRequestsStatus: "unavailable",
+        }),
+        previewMergeBranch: async () => ({
+          currentBranchName: "main",
+          targetBranchName: "feature/test",
+          targetDisplayName: "feature/test",
+          status: "mergeable",
+          commitCount: 2,
+          hasConflicts: false,
+          message: "2 commits from feature/test will merge into main.",
+        }),
+        mergeBranch: async () => ({
+          ok: true,
+          branchName: "main",
+          snapshotChanged: true,
+        }),
+        syncBranch: async () => ({
+          ok: true,
+          action: "fetch",
+          snapshotChanged: false,
+        }),
         checkoutBranch: async () => ({ ok: true, snapshotChanged: false }),
-        createBranch: async () => ({ ok: true, branchName: "main", snapshotChanged: false }),
-        generateCommitMessage: async () => ({ subject: "", body: "", usedFallback: true, failureMessage: null }),
-        commitFiles: async () => ({ ok: true, mode: "commit_only", pushed: false, snapshotChanged: false }),
+        createBranch: async () => ({
+          ok: true,
+          branchName: "main",
+          snapshotChanged: false,
+        }),
+        generateCommitMessage: async () => ({
+          subject: "",
+          body: "",
+          usedFallback: true,
+          failureMessage: null,
+        }),
+        commitFiles: async () => ({
+          ok: true,
+          mode: "commit_only",
+          pushed: false,
+          snapshotChanged: false,
+        }),
         discardFile: async () => ({ snapshotChanged: false }),
         ignoreFile: async () => ({ snapshotChanged: false }),
         readPatch: async () => ({ patch: "" }),
       } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -974,9 +1150,9 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
     await router.handleMessage(
       ws as never,
@@ -989,8 +1165,8 @@ describe("ws-router", () => {
           chatId: "chat-1",
           branch: { kind: "local", name: "feature/test" },
         },
-      })
-    )
+      }),
+    );
 
     await router.handleMessage(
       ws as never,
@@ -1003,8 +1179,8 @@ describe("ws-router", () => {
           chatId: "chat-1",
           branch: { kind: "local", name: "feature/test" },
         },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent[0]).toEqual({
       v: PROTOCOL_VERSION,
@@ -1019,7 +1195,7 @@ describe("ws-router", () => {
         hasConflicts: false,
         message: "2 commits from feature/test will merge into main.",
       },
-    })
+    });
     expect(ws.sent[1]).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
@@ -1029,19 +1205,19 @@ describe("ws-router", () => {
         branchName: "main",
         snapshotChanged: true,
       },
-    })
-  })
+    });
+  });
 
   test("loads older chat history pages", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
-    state.projectIdsByPath.set("/tmp/project", "project-1")
+    });
+    state.projectIdsByPath.set("/tmp/project", "project-1");
     state.chatsById.set("chat-1", {
       id: "chat-1",
       projectId: "project-1",
@@ -1053,24 +1229,29 @@ describe("ws-router", () => {
       planMode: false,
       sessionToken: null,
       lastTurnOutcome: null,
-    })
+    });
 
     const router = createWsRouter({
       store: {
         state,
         getMessagesPageBefore: () => ({
-          messages: [{
-            _id: "msg-1",
-            kind: "assistant_text",
-            createdAt: 1,
-            text: "older message",
-          }],
+          messages: [
+            {
+              _id: "msg-1",
+              kind: "assistant_text",
+              createdAt: 1,
+              text: "older message",
+            },
+          ],
           hasOlder: false,
           olderCursor: null,
         }),
         getChat: () => state.chatsById.get("chat-1") ?? null,
       } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -1083,8 +1264,8 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
+    });
+    const ws = new FakeWebSocket();
 
     await router.handleMessage(
       ws as never,
@@ -1098,36 +1279,38 @@ describe("ws-router", () => {
           beforeCursor: "idx:100",
           limit: 100,
         },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent[0]).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
       id: "history-1",
       result: {
-        messages: [{
-          _id: "msg-1",
-          kind: "assistant_text",
-          createdAt: 1,
-          text: "older message",
-        }],
+        messages: [
+          {
+            _id: "msg-1",
+            kind: "assistant_text",
+            createdAt: 1,
+            text: "older message",
+          },
+        ],
         hasOlder: false,
         olderCursor: null,
       },
-    })
-  })
+    });
+  });
 
   test("marks chats read and rebroadcasts sidebar snapshots", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
-    state.projectIdsByPath.set("/tmp/project", "project-1")
+    });
+    state.projectIdsByPath.set("/tmp/project", "project-1");
     state.chatsById.set("chat-1", {
       id: "chat-1",
       projectId: "project-1",
@@ -1139,16 +1322,16 @@ describe("ws-router", () => {
       planMode: false,
       sessionToken: null,
       lastTurnOutcome: null,
-    })
+    });
 
     const store = {
       state,
       async setChatReadState(chatId: string, unread: boolean) {
-        const chat = state.chatsById.get(chatId)
-        if (!chat) throw new Error("Chat not found")
-        chat.unread = unread
+        const chat = state.chatsById.get(chatId);
+        if (!chat) throw new Error("Chat not found");
+        chat.unread = unread;
       },
-    }
+    };
 
     const router = createWsRouter({
       store: store as never,
@@ -1168,12 +1351,12 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const wsA = new FakeWebSocket()
-    const wsB = new FakeWebSocket()
+    });
+    const wsA = new FakeWebSocket();
+    const wsB = new FakeWebSocket();
 
-    router.handleOpen(wsA as never)
-    router.handleOpen(wsB as never)
+    router.handleOpen(wsA as never);
+    router.handleOpen(wsB as never);
 
     await router.handleMessage(
       wsA as never,
@@ -1182,8 +1365,8 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "sidebar-a",
         topic: { type: "sidebar" },
-      })
-    )
+      }),
+    );
     await router.handleMessage(
       wsB as never,
       JSON.stringify({
@@ -1191,8 +1374,8 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "sidebar-b",
         topic: { type: "sidebar" },
-      })
-    )
+      }),
+    );
 
     await router.handleMessage(
       wsA as never,
@@ -1201,14 +1384,14 @@ describe("ws-router", () => {
         type: "command",
         id: "mark-read-1",
         command: { type: "chat.markRead", chatId: "chat-1" },
-      })
-    )
+      }),
+    );
 
     expect(wsA.sent.at(-2)).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
       id: "mark-read-1",
-    })
+    });
     expect(wsA.sent.at(-1)).toEqual({
       v: PROTOCOL_VERSION,
       type: "snapshot",
@@ -1216,24 +1399,28 @@ describe("ws-router", () => {
       snapshot: {
         type: "sidebar",
         data: {
-          projectGroups: [withSidebarGroupDefaults({
-            groupKey: "project-1",
-            localPath: "/tmp/project",
-            chats: [{
-              _id: "chat-1",
-              _creationTime: 1,
-              chatId: "chat-1",
-              title: "Chat",
-              status: "idle",
-              unread: false,
+          projectGroups: [
+            withSidebarGroupDefaults({
+              groupKey: "project-1",
               localPath: "/tmp/project",
-              provider: null,
-              hasAutomation: false,
-            }],
-          })],
+              chats: [
+                {
+                  _id: "chat-1",
+                  _creationTime: 1,
+                  chatId: "chat-1",
+                  title: "Chat",
+                  status: "idle",
+                  unread: false,
+                  localPath: "/tmp/project",
+                  provider: null,
+                  hasAutomation: false,
+                },
+              ],
+            }),
+          ],
         },
       },
-    })
+    });
     expect(wsB.sent.at(-1)).toEqual({
       v: PROTOCOL_VERSION,
       type: "snapshot",
@@ -1241,57 +1428,64 @@ describe("ws-router", () => {
       snapshot: {
         type: "sidebar",
         data: {
-          projectGroups: [withSidebarGroupDefaults({
-            groupKey: "project-1",
-            localPath: "/tmp/project",
-            chats: [{
-              _id: "chat-1",
-              _creationTime: 1,
-              chatId: "chat-1",
-              title: "Chat",
-              status: "idle",
-              unread: false,
+          projectGroups: [
+            withSidebarGroupDefaults({
+              groupKey: "project-1",
               localPath: "/tmp/project",
-              provider: null,
-              hasAutomation: false,
-            }],
-          })],
+              chats: [
+                {
+                  _id: "chat-1",
+                  _creationTime: 1,
+                  chatId: "chat-1",
+                  title: "Chat",
+                  status: "idle",
+                  unread: false,
+                  localPath: "/tmp/project",
+                  provider: null,
+                  hasAutomation: false,
+                },
+              ],
+            }),
+          ],
         },
       },
-    })
-  })
+    });
+  });
 
   test("reorders sidebar project groups on the server and rebroadcasts the snapshot", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project-1",
       title: "Project 1",
       createdAt: 1,
       updatedAt: 1,
-    })
+    });
     state.projectsById.set("project-2", {
       id: "project-2",
       localPath: "/tmp/project-2",
       title: "Project 2",
       createdAt: 2,
       updatedAt: 2,
-    })
+    });
 
-    const setSidebarProjectOrderCalls: string[][] = []
-    let sidebarProjectOrder: string[] = []
+    const setSidebarProjectOrderCalls: string[][] = [];
+    let sidebarProjectOrder: string[] = [];
     const router = createWsRouter({
       store: {
         state,
         getSidebarProjectOrder() {
-          return [...sidebarProjectOrder]
+          return [...sidebarProjectOrder];
         },
         async setSidebarProjectOrder(projectIds: string[]) {
-          setSidebarProjectOrderCalls.push(projectIds)
-          sidebarProjectOrder = [...projectIds]
+          setSidebarProjectOrderCalls.push(projectIds);
+          sidebarProjectOrder = [...projectIds];
         },
       } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -1304,9 +1498,9 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
     await router.handleMessage(
       ws as never,
@@ -1315,8 +1509,8 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "sidebar-sub-1",
         topic: { type: "sidebar" },
-      })
-    )
+      }),
+    );
 
     await router.handleMessage(
       ws as never,
@@ -1324,16 +1518,19 @@ describe("ws-router", () => {
         v: 1,
         type: "command",
         id: "sidebar-reorder-1",
-        command: { type: "sidebar.reorderProjectGroups", projectIds: ["project-1", "project-2"] },
-      })
-    )
+        command: {
+          type: "sidebar.reorderProjectGroups",
+          projectIds: ["project-1", "project-2"],
+        },
+      }),
+    );
 
-    expect(setSidebarProjectOrderCalls).toEqual([["project-1", "project-2"]])
+    expect(setSidebarProjectOrderCalls).toEqual([["project-1", "project-2"]]);
     expect(ws.sent.at(-2)).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
       id: "sidebar-reorder-1",
-    })
+    });
     expect(ws.sent.at(-1)).toEqual({
       v: PROTOCOL_VERSION,
       type: "snapshot",
@@ -1355,18 +1552,18 @@ describe("ws-router", () => {
           ],
         },
       },
-    })
-  })
+    });
+  });
 
   test("forks a chat through the agent and rebroadcasts the sidebar snapshot", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
+    });
     state.chatsById.set("chat-1", {
       id: "chat-1",
       projectId: "project-1",
@@ -1379,16 +1576,16 @@ describe("ws-router", () => {
       sessionToken: "session-1",
       pendingForkSessionToken: null,
       lastTurnOutcome: null,
-    })
+    });
 
-    const forkChatCalls: string[] = []
+    const forkChatCalls: string[] = [];
     const router = createWsRouter({
       store: { state } as never,
       agent: {
         getActiveStatuses: () => new Map(),
         getDrainingChatIds: () => new Set(),
-          forkChat: async (chatId: string) => {
-          forkChatCalls.push(chatId)
+        forkChat: async (chatId: string) => {
+          forkChatCalls.push(chatId);
           state.chatsById.set("chat-fork-1", {
             id: "chat-fork-1",
             projectId: "project-1",
@@ -1401,8 +1598,8 @@ describe("ws-router", () => {
             sessionToken: null,
             pendingForkSessionToken: "session-1",
             lastTurnOutcome: null,
-          })
-          return { chatId: "chat-fork-1" }
+          });
+          return { chatId: "chat-fork-1" };
         },
       } as never,
       terminals: {
@@ -1417,9 +1614,9 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
     await router.handleMessage(
       ws as never,
@@ -1428,8 +1625,8 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "sidebar-sub-1",
         topic: { type: "sidebar" },
-      })
-    )
+      }),
+    );
 
     await router.handleMessage(
       ws as never,
@@ -1438,16 +1635,16 @@ describe("ws-router", () => {
         type: "command",
         id: "fork-1",
         command: { type: "chat.fork", chatId: "chat-1" },
-      })
-    )
+      }),
+    );
 
-    expect(forkChatCalls).toEqual(["chat-1"])
+    expect(forkChatCalls).toEqual(["chat-1"]);
     expect(ws.sent.at(-2)).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
       id: "fork-1",
       result: { chatId: "chat-fork-1" },
-    })
+    });
     expect(ws.sent.at(-1)).toEqual({
       v: PROTOCOL_VERSION,
       type: "snapshot",
@@ -1455,48 +1652,53 @@ describe("ws-router", () => {
       snapshot: {
         type: "sidebar",
         data: {
-          projectGroups: [withSidebarGroupDefaults({
-            groupKey: "project-1",
-            localPath: "/tmp/project",
-            chats: [{
-              _id: "chat-fork-1",
-              _creationTime: 2,
-              chatId: "chat-fork-1",
-              title: "Fork: Chat",
-              status: "idle",
-              unread: false,
+          projectGroups: [
+            withSidebarGroupDefaults({
+              groupKey: "project-1",
               localPath: "/tmp/project",
-              provider: "claude",
-              canFork: true,
-              hasAutomation: false,
-            }, {
-              _id: "chat-1",
-              _creationTime: 1,
-              chatId: "chat-1",
-              title: "Chat",
-              status: "idle",
-              unread: false,
-              localPath: "/tmp/project",
-              provider: "claude",
-              canFork: true,
-              hasAutomation: false,
-            }],
-          })],
+              chats: [
+                {
+                  _id: "chat-fork-1",
+                  _creationTime: 2,
+                  chatId: "chat-fork-1",
+                  title: "Fork: Chat",
+                  status: "idle",
+                  unread: false,
+                  localPath: "/tmp/project",
+                  provider: "claude",
+                  canFork: true,
+                  hasAutomation: false,
+                },
+                {
+                  _id: "chat-1",
+                  _creationTime: 1,
+                  chatId: "chat-1",
+                  title: "Chat",
+                  status: "idle",
+                  unread: false,
+                  localPath: "/tmp/project",
+                  provider: "claude",
+                  canFork: true,
+                  hasAutomation: false,
+                },
+              ],
+            }),
+          ],
         },
       },
-    })
-  })
+    });
+  });
 
   test("prunes stale empty chats during explicit maintenance runs", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
-    state.projectIdsByPath.set("/tmp/project", "project-1")
+    });
+    state.projectIdsByPath.set("/tmp/project", "project-1");
     state.chatsById.set("chat-stale", {
       id: "chat-stale",
       projectId: "project-1",
@@ -1508,19 +1710,22 @@ describe("ws-router", () => {
       planMode: false,
       sessionToken: null,
       lastTurnOutcome: null,
-    })
+    });
 
-    let pruneCalls = 0
+    let pruneCalls = 0;
     const router = createWsRouter({
       store: {
         state,
         async pruneStaleEmptyChats() {
-          pruneCalls += 1
-          state.chatsById.delete("chat-stale")
-          return ["chat-stale"]
+          pruneCalls += 1;
+          state.chatsById.delete("chat-stale");
+          return ["chat-stale"];
         },
       } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -1533,10 +1738,10 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
+    });
+    const ws = new FakeWebSocket();
 
-    await router.pruneStaleEmptyChats()
+    await router.pruneStaleEmptyChats();
     await router.handleMessage(
       ws as never,
       JSON.stringify({
@@ -1544,10 +1749,10 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "sidebar-sub-1",
         topic: { type: "sidebar" },
-      })
-    )
+      }),
+    );
 
-    expect(pruneCalls).toBe(1)
+    expect(pruneCalls).toBe(1);
     expect(ws.sent[0]).toEqual({
       v: PROTOCOL_VERSION,
       type: "snapshot",
@@ -1555,28 +1760,30 @@ describe("ws-router", () => {
       snapshot: {
         type: "sidebar",
         data: {
-          projectGroups: [{
-            ...withSidebarGroupDefaults({
-              groupKey: "project-1",
-              localPath: "/tmp/project",
-              chats: [],
-            }),
-          }],
+          projectGroups: [
+            {
+              ...withSidebarGroupDefaults({
+                groupKey: "project-1",
+                localPath: "/tmp/project",
+                chats: [],
+              }),
+            },
+          ],
         },
       },
-    })
-  })
+    });
+  });
 
   test("protects draft-bearing chats during explicit maintenance runs", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
-    state.projectIdsByPath.set("/tmp/project", "project-1")
+    });
+    state.projectIdsByPath.set("/tmp/project", "project-1");
     state.chatsById.set("chat-stale", {
       id: "chat-stale",
       projectId: "project-1",
@@ -1588,18 +1795,23 @@ describe("ws-router", () => {
       planMode: false,
       sessionToken: null,
       lastTurnOutcome: null,
-    })
+    });
 
-    let capturedProtectedChatIds: string[] = []
+    let capturedProtectedChatIds: string[] = [];
     const router = createWsRouter({
       store: {
         state,
-        async pruneStaleEmptyChats(args?: { protectedChatIds?: Iterable<string> }) {
-          capturedProtectedChatIds = [...(args?.protectedChatIds ?? [])]
-          return []
+        async pruneStaleEmptyChats(args?: {
+          protectedChatIds?: Iterable<string>;
+        }) {
+          capturedProtectedChatIds = [...(args?.protectedChatIds ?? [])];
+          return [];
         },
       } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -1612,9 +1824,9 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
     await router.handleMessage(
       ws as never,
@@ -1626,10 +1838,10 @@ describe("ws-router", () => {
           type: "chat.setDraftProtection",
           chatIds: ["chat-stale"],
         },
-      })
-    )
+      }),
+    );
 
-    await router.pruneStaleEmptyChats()
+    await router.pruneStaleEmptyChats();
     await router.handleMessage(
       ws as never,
       JSON.stringify({
@@ -1637,25 +1849,27 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "sidebar-sub-1",
         topic: { type: "sidebar" },
-      })
-    )
+      }),
+    );
 
-    expect(capturedProtectedChatIds).toEqual(["chat-stale"])
+    expect(capturedProtectedChatIds).toEqual(["chat-stale"]);
     expect(ws.sent[0]).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
       id: "draft-protection-1",
-    })
-  })
+    });
+  });
 
   test("broadcasts background title-generation errors to connected clients", () => {
-    let reportBackgroundError: ((message: string) => void) | null | undefined
+    let reportBackgroundError: ((message: string) => void) | null | undefined;
     const router = createWsRouter({
       store: { state: createEmptyState() } as never,
       agent: {
         getActiveStatuses: () => new Map(),
-        setBackgroundErrorReporter: (reporter: ((message: string) => void) | null) => {
-          reportBackgroundError = reporter
+        setBackgroundErrorReporter: (
+          reporter: ((message: string) => void) | null,
+        ) => {
+          reportBackgroundError = reporter;
         },
       } as never,
       terminals: {
@@ -1670,11 +1884,11 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
-    router.handleOpen(ws as never)
+    });
+    const ws = new FakeWebSocket();
+    router.handleOpen(ws as never);
 
-    reportBackgroundError?.("[title-generation] chat chat-1 failed")
+    reportBackgroundError?.("[title-generation] chat chat-1 failed");
 
     expect(ws.sent).toEqual([
       {
@@ -1682,26 +1896,33 @@ describe("ws-router", () => {
         type: "error",
         message: "[title-generation] chat chat-1 failed",
       },
-    ])
-  })
+    ]);
+  });
 
   test("subscribes to keybindings snapshots and writes keybindings through the router", async () => {
-    const initialSnapshot: KeybindingsSnapshot = DEFAULT_KEYBINDINGS_SNAPSHOT
+    const initialSnapshot: KeybindingsSnapshot = DEFAULT_KEYBINDINGS_SNAPSHOT;
     const keybindings = {
       snapshot: initialSnapshot,
       getSnapshot() {
-        return this.snapshot
+        return this.snapshot;
       },
       onChange: () => () => {},
       async write(bindings: KeybindingsSnapshot["bindings"]) {
-        this.snapshot = { bindings, warning: null, filePathDisplay: "~/.kanna/keybindings.json" }
-        return this.snapshot
+        this.snapshot = {
+          bindings,
+          warning: null,
+          filePathDisplay: "~/.kanna/keybindings.json",
+        };
+        return this.snapshot;
       },
-    }
+    };
 
     const router = createWsRouter({
       store: { state: createEmptyState() } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -1711,8 +1932,8 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
+    });
+    const ws = new FakeWebSocket();
 
     await router.handleMessage(
       ws as never,
@@ -1721,8 +1942,8 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "keybindings-sub-1",
         topic: { type: "keybindings" },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent[0]).toEqual({
       v: PROTOCOL_VERSION,
@@ -1732,7 +1953,7 @@ describe("ws-router", () => {
         type: "keybindings",
         data: keybindings.snapshot,
       },
-    })
+    });
 
     await router.handleMessage(
       ws as never,
@@ -1753,10 +1974,10 @@ describe("ws-router", () => {
             openAddProject: ["cmd+alt+o"],
           },
         },
-      })
-    )
+      }),
+    );
 
-    await Promise.resolve()
+    await Promise.resolve();
     expect(ws.sent[1]).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
@@ -1775,14 +1996,14 @@ describe("ws-router", () => {
         warning: null,
         filePathDisplay: "~/.kanna/keybindings.json",
       },
-    })
-  })
+    });
+  });
 
   test("subscribes to update snapshots and handles update.check commands", async () => {
     const updateManager = {
       snapshot: { ...DEFAULT_UPDATE_SNAPSHOT },
       getSnapshot() {
-        return this.snapshot
+        return this.snapshot;
       },
       onChange: () => () => {},
       async checkForUpdates({ force }: { force?: boolean }) {
@@ -1792,8 +2013,8 @@ describe("ws-router", () => {
           status: "available",
           updateAvailable: true,
           lastCheckedAt: 123,
-        }
-        return this.snapshot
+        };
+        return this.snapshot;
       },
       async installUpdate() {
         return {
@@ -1801,14 +2022,18 @@ describe("ws-router", () => {
           action: "restart",
           errorCode: "version_not_live_yet",
           userTitle: "Update not live yet",
-          userMessage: "This update is still propagating. Try again in a few minutes.",
-        }
+          userMessage:
+            "This update is still propagating. Try again in a few minutes.",
+        };
       },
-    }
+    };
 
     const router = createWsRouter({
       store: { state: createEmptyState() } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -1821,8 +2046,8 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: updateManager as never,
-    })
-    const ws = new FakeWebSocket()
+    });
+    const ws = new FakeWebSocket();
 
     await router.handleMessage(
       ws as never,
@@ -1831,8 +2056,8 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "update-sub-1",
         topic: { type: "update" },
-      })
-    )
+      }),
+    );
 
     expect(ws.sent[0]).toEqual({
       v: PROTOCOL_VERSION,
@@ -1842,7 +2067,7 @@ describe("ws-router", () => {
         type: "update",
         data: DEFAULT_UPDATE_SNAPSHOT,
       },
-    })
+    });
 
     await router.handleMessage(
       ws as never,
@@ -1854,10 +2079,10 @@ describe("ws-router", () => {
           type: "update.check",
           force: true,
         },
-      })
-    )
+      }),
+    );
 
-    await Promise.resolve()
+    await Promise.resolve();
     expect(ws.sent[1]).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
@@ -1872,7 +2097,7 @@ describe("ws-router", () => {
         installAction: "restart",
         reloadRequestedAt: null,
       },
-    })
+    });
 
     await router.handleMessage(
       ws as never,
@@ -1883,10 +2108,10 @@ describe("ws-router", () => {
         command: {
           type: "update.install",
         },
-      })
-    )
+      }),
+    );
 
-    await Promise.resolve()
+    await Promise.resolve();
     expect(ws.sent[2]).toEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
@@ -1896,21 +2121,22 @@ describe("ws-router", () => {
         action: "restart",
         errorCode: "version_not_live_yet",
         userTitle: "Update not live yet",
-        userMessage: "This update is still propagating. Try again in a few minutes.",
+        userMessage:
+          "This update is still propagating. Try again in a few minutes.",
       },
-    })
-  })
+    });
+  });
 
   test("routes discard diff file commands through the diff store and rebroadcasts chat snapshots", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
-    state.projectIdsByPath.set("/tmp/project", "project-1")
+    });
+    state.projectIdsByPath.set("/tmp/project", "project-1");
     state.chatsById.set("chat-1", {
       id: "chat-1",
       projectId: "project-1",
@@ -1922,31 +2148,64 @@ describe("ws-router", () => {
       planMode: false,
       sessionToken: null,
       lastTurnOutcome: null,
-    })
+    });
 
-    const discardCalls: Array<{ projectId: string; projectPath: string; path: string }> = []
+    const discardCalls: Array<{
+      projectId: string;
+      projectPath: string;
+      path: string;
+    }> = [];
     const diffStore = {
-      getProjectSnapshot: () => ({ status: "ready" as const, files: [], defaultBranchName: "main", originRepoSlug: "acme/repo", aheadCount: 0, behindCount: 0, lastFetchedAt: undefined }),
+      getProjectSnapshot: () => ({
+        status: "ready" as const,
+        files: [],
+        defaultBranchName: "main",
+        originRepoSlug: "acme/repo",
+        aheadCount: 0,
+        behindCount: 0,
+        lastFetchedAt: undefined,
+      }),
       refreshSnapshot: async () => false,
-      syncBranch: async () => ({ ok: true as const, action: "fetch" as const, snapshotChanged: false }),
+      syncBranch: async () => ({
+        ok: true as const,
+        action: "fetch" as const,
+        snapshotChanged: false,
+      }),
       generateCommitMessage: async () => ({ subject: "", body: "" }),
-      commitFiles: async () => ({ ok: true as const, mode: "commit_only" as const, pushed: false, snapshotChanged: false }),
-      discardFile: async (args: { projectId: string; projectPath: string; path: string }) => {
-        discardCalls.push(args)
-        return { snapshotChanged: true }
+      commitFiles: async () => ({
+        ok: true as const,
+        mode: "commit_only" as const,
+        pushed: false,
+        snapshotChanged: false,
+      }),
+      discardFile: async (args: {
+        projectId: string;
+        projectPath: string;
+        path: string;
+      }) => {
+        discardCalls.push(args);
+        return { snapshotChanged: true };
       },
       ignoreFile: async () => ({ snapshotChanged: false }),
-    }
+    };
 
     const router = createWsRouter({
       store: {
         state,
         getChat: (chatId: string) => state.chatsById.get(chatId) ?? null,
-        getProject: (projectId: string) => state.projectsById.get(projectId) ?? null,
-        getRecentChatHistory: () => ({ entries: [], hasOlder: false, olderCursor: null }),
+        getProject: (projectId: string) =>
+          state.projectsById.get(projectId) ?? null,
+        getRecentChatHistory: () => ({
+          entries: [],
+          hasOlder: false,
+          olderCursor: null,
+        }),
       } as never,
       diffStore: diffStore as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -1959,10 +2218,10 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
+    });
+    const ws = new FakeWebSocket();
 
-    router.handleOpen(ws as never)
+    router.handleOpen(ws as never);
     router.handleMessage(
       ws as never,
       JSON.stringify({
@@ -1970,8 +2229,8 @@ describe("ws-router", () => {
         type: "subscribe",
         id: "chat-sub",
         topic: { type: "chat", chatId: "chat-1" },
-      })
-    )
+      }),
+    );
 
     await router.handleMessage(
       ws as never,
@@ -1984,32 +2243,34 @@ describe("ws-router", () => {
           chatId: "chat-1",
           path: "app.txt",
         },
-      })
-    )
+      }),
+    );
 
-    expect(discardCalls).toEqual([{
-      projectId: "project-1",
-      projectPath: "/tmp/project",
-      path: "app.txt",
-    }])
+    expect(discardCalls).toEqual([
+      {
+        projectId: "project-1",
+        projectPath: "/tmp/project",
+        path: "app.txt",
+      },
+    ]);
     expect(ws.sent).toContainEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
       id: "discard-1",
       result: { snapshotChanged: true },
-    })
-  })
+    });
+  });
 
   test("routes ignore diff file commands through the diff store", async () => {
-    const state = createEmptyState()
+    const state = createEmptyState();
     state.projectsById.set("project-1", {
       id: "project-1",
       localPath: "/tmp/project",
       title: "Project",
       createdAt: 1,
       updatedAt: 1,
-    })
-    state.projectIdsByPath.set("/tmp/project", "project-1")
+    });
+    state.projectIdsByPath.set("/tmp/project", "project-1");
     state.chatsById.set("chat-1", {
       id: "chat-1",
       projectId: "project-1",
@@ -2021,28 +2282,57 @@ describe("ws-router", () => {
       planMode: false,
       sessionToken: null,
       lastTurnOutcome: null,
-    })
+    });
 
-    const ignoreCalls: Array<{ projectId: string; projectPath: string; path: string }> = []
+    const ignoreCalls: Array<{
+      projectId: string;
+      projectPath: string;
+      path: string;
+    }> = [];
     const router = createWsRouter({
       store: {
         state,
         getChat: (chatId: string) => state.chatsById.get(chatId) ?? null,
-        getProject: (projectId: string) => state.projectsById.get(projectId) ?? null,
+        getProject: (projectId: string) =>
+          state.projectsById.get(projectId) ?? null,
       } as never,
       diffStore: {
-        getProjectSnapshot: () => ({ status: "ready" as const, files: [], defaultBranchName: "main", originRepoSlug: "acme/repo", aheadCount: 0, behindCount: 0, lastFetchedAt: undefined }),
+        getProjectSnapshot: () => ({
+          status: "ready" as const,
+          files: [],
+          defaultBranchName: "main",
+          originRepoSlug: "acme/repo",
+          aheadCount: 0,
+          behindCount: 0,
+          lastFetchedAt: undefined,
+        }),
         refreshSnapshot: async () => false,
-        syncBranch: async () => ({ ok: true as const, action: "fetch" as const, snapshotChanged: false }),
+        syncBranch: async () => ({
+          ok: true as const,
+          action: "fetch" as const,
+          snapshotChanged: false,
+        }),
         generateCommitMessage: async () => ({ subject: "", body: "" }),
-        commitFiles: async () => ({ ok: true as const, mode: "commit_only" as const, pushed: false, snapshotChanged: false }),
+        commitFiles: async () => ({
+          ok: true as const,
+          mode: "commit_only" as const,
+          pushed: false,
+          snapshotChanged: false,
+        }),
         discardFile: async () => ({ snapshotChanged: false }),
-        ignoreFile: async (args: { projectId: string; projectPath: string; path: string }) => {
-          ignoreCalls.push(args)
-          return { snapshotChanged: false }
+        ignoreFile: async (args: {
+          projectId: string;
+          projectPath: string;
+          path: string;
+        }) => {
+          ignoreCalls.push(args);
+          return { snapshotChanged: false };
         },
       } as never,
-      agent: { getActiveStatuses: () => new Map(), getDrainingChatIds: () => new Set() } as never,
+      agent: {
+        getActiveStatuses: () => new Map(),
+        getDrainingChatIds: () => new Set(),
+      } as never,
       terminals: {
         getSnapshot: () => null,
         onEvent: () => () => {},
@@ -2055,8 +2345,8 @@ describe("ws-router", () => {
       getDiscoveredProjects: () => [],
       machineDisplayName: "Local Machine",
       updateManager: null,
-    })
-    const ws = new FakeWebSocket()
+    });
+    const ws = new FakeWebSocket();
 
     await router.handleMessage(
       ws as never,
@@ -2069,19 +2359,21 @@ describe("ws-router", () => {
           chatId: "chat-1",
           path: "scratch.log",
         },
-      })
-    )
+      }),
+    );
 
-    expect(ignoreCalls).toEqual([{
-      projectId: "project-1",
-      projectPath: "/tmp/project",
-      path: "scratch.log",
-    }])
+    expect(ignoreCalls).toEqual([
+      {
+        projectId: "project-1",
+        projectPath: "/tmp/project",
+        path: "scratch.log",
+      },
+    ]);
     expect(ws.sent).toContainEqual({
       v: PROTOCOL_VERSION,
       type: "ack",
       id: "ignore-1",
       result: { snapshotChanged: false },
-    })
-  })
-})
+    });
+  });
+});

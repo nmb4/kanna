@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react"
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import {
   BookText,
   Command,
@@ -13,12 +19,18 @@ import {
   Sun,
   DownloadCloud,
   LogOut,
-} from "lucide-react"
-import Markdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { useNavigate, useOutletContext, useParams } from "react-router-dom"
-import { getKeybindingsFilePathDisplay, SDK_CLIENT_APP } from "../../shared/branding"
-import { ANALYTICS_STATIC_EVENT_NAMES, ANALYTICS_STATIC_PROPERTY_NAMES } from "../../shared/analytics"
+} from "lucide-react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import {
+  getKeybindingsFilePathDisplay,
+  SDK_CLIENT_APP,
+} from "../../shared/branding";
+import {
+  ANALYTICS_STATIC_EVENT_NAMES,
+  ANALYTICS_STATIC_PROPERTY_NAMES,
+} from "../../shared/analytics";
 import {
   DEFAULT_KEYBINDINGS,
   DEFAULT_OPENAI_SDK_MODEL,
@@ -28,16 +40,22 @@ import {
   type KeybindingAction,
   type LlmProviderKind,
   type UpdateSnapshot,
-} from "../../shared/types"
-import { markdownComponents } from "../components/messages/shared"
-import { ChatPreferenceControls } from "../components/chat-ui/ChatPreferenceControls"
-import { EDITOR_OPTIONS, EditorIcon } from "../components/editor-icons"
-import { Button, buttonVariants } from "../components/ui/button"
-import { Dialog, DialogBody, DialogContent, DialogFooter, DialogTitle } from "../components/ui/dialog"
-import { Input } from "../components/ui/input"
-import { SettingsHeaderButton } from "../components/ui/settings-header-button"
-import type { EditorPreset } from "../../shared/protocol"
-import { SegmentedControl } from "../components/ui/segmented-control"
+} from "../../shared/types";
+import { markdownComponents } from "../components/messages/shared";
+import { ChatPreferenceControls } from "../components/chat-ui/ChatPreferenceControls";
+import { EDITOR_OPTIONS, EditorIcon } from "../components/editor-icons";
+import { Button, buttonVariants } from "../components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+} from "../components/ui/dialog";
+import { Input } from "../components/ui/input";
+import { SettingsHeaderButton } from "../components/ui/settings-header-button";
+import type { EditorPreset } from "../../shared/protocol";
+import { SegmentedControl } from "../components/ui/segmented-control";
 import {
   Select,
   SelectContent,
@@ -45,11 +63,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../components/ui/select"
-import { useTheme, type ThemePreference } from "../hooks/useTheme"
-import { KEYBINDING_ACTION_LABELS, formatKeybindingInput, getResolvedKeybindings, parseKeybindingInput } from "../lib/keybindings"
-import { playChatNotificationSound } from "../lib/chatSounds"
-import { cn } from "../lib/utils"
+} from "../components/ui/select";
+import { useTheme, type ThemePreference } from "../hooks/useTheme";
+import {
+  KEYBINDING_ACTION_LABELS,
+  formatKeybindingInput,
+  getResolvedKeybindings,
+  parseKeybindingInput,
+} from "../lib/keybindings";
+import { playChatNotificationSound } from "../lib/chatSounds";
+import { cn } from "../lib/utils";
 import {
   DEFAULT_TERMINAL_MIN_COLUMN_WIDTH,
   DEFAULT_TERMINAL_SCROLLBACK,
@@ -59,29 +82,38 @@ import {
   MIN_TERMINAL_SCROLLBACK,
   getDefaultEditorCommandTemplate,
   useTerminalPreferencesStore,
-} from "../stores/terminalPreferencesStore"
-import { useChatPreferencesStore } from "../stores/chatPreferencesStore"
-import { CHAT_SOUND_OPTIONS, useChatSoundPreferencesStore, type ChatSoundId, type ChatSoundPreference } from "../stores/chatSoundPreferencesStore"
-import type { KannaState } from "./useKannaState"
+} from "../stores/terminalPreferencesStore";
+import { useChatPreferencesStore } from "../stores/chatPreferencesStore";
+import { usePiModelsStore } from "../stores/piModelsStore";
+import {
+  CHAT_SOUND_OPTIONS,
+  useChatSoundPreferencesStore,
+  type ChatSoundId,
+  type ChatSoundPreference,
+} from "../stores/chatSoundPreferencesStore";
+import type { KannaState } from "./useKannaState";
 
 const sidebarItems = [
   {
     id: "general",
     label: "General",
     icon: Settings2,
-    subtitle: "Manage appearance, editor behavior, and embedded terminal defaults.",
+    subtitle:
+      "Manage appearance, editor behavior, and embedded terminal defaults.",
   },
   {
     id: "providers",
     label: "Providers",
     icon: MessageSquareQuote,
-    subtitle: "Manage the default chat provider and saved model defaults for Claude Code and Codex.",
+    subtitle:
+      "Manage the default chat provider and saved model defaults for Claude Code, Codex, and Pi.",
   },
   {
     id: "keybindings",
     label: "Keybindings",
     icon: Command,
-    subtitle: "Edit global app shortcuts stored in the active keybindings file.",
+    subtitle:
+      "Edit global app shortcuts stored in the active keybindings file.",
   },
   // always last
   {
@@ -90,131 +122,151 @@ const sidebarItems = [
     icon: BookText,
     subtitle: "Release notes pulled from the public GitHub releases feed.",
   },
-] as const
-type SidebarItem = (typeof sidebarItems)[number]
-type SidebarPageId = SidebarItem["id"]
+] as const;
+type SidebarItem = (typeof sidebarItems)[number];
+type SidebarPageId = SidebarItem["id"];
 
-export function resolveSettingsSectionId(sectionId: string | undefined): SidebarPageId | null {
-  if (!sectionId) return null
-  return sidebarItems.some((item) => item.id === sectionId) ? (sectionId as SidebarPageId) : null
+export function resolveSettingsSectionId(
+  sectionId: string | undefined,
+): SidebarPageId | null {
+  if (!sectionId) return null;
+  return sidebarItems.some((item) => item.id === sectionId)
+    ? (sectionId as SidebarPageId)
+    : null;
 }
 
 const themeOptions = [
   { value: "light" as ThemePreference, label: "Light", icon: Sun },
   { value: "dark" as ThemePreference, label: "Dark", icon: Moon },
   { value: "system" as ThemePreference, label: "System", icon: Monitor },
-]
+];
 
-const chatSoundPreferenceOptions: { value: ChatSoundPreference; label: string }[] = [
+const chatSoundPreferenceOptions: {
+  value: ChatSoundPreference;
+  label: string;
+}[] = [
   { value: "never", label: "Never" },
   { value: "unfocused", label: "When Unfocused" },
   { value: "always", label: "Always" },
-]
+];
 
 const analyticsOptions = [
   { value: "disabled" as const, label: "Off" },
   { value: "enabled" as const, label: "On" },
-]
+];
 
-const QUICK_RESPONSE_PROVIDER_OPTIONS: Array<{ value: LlmProviderKind; label: string }> = [
+const QUICK_RESPONSE_PROVIDER_OPTIONS: Array<{
+  value: LlmProviderKind;
+  label: string;
+}> = [
   { value: "openai", label: "OpenAI" },
   { value: "openrouter", label: "OpenRouter" },
   { value: "custom", label: "Custom" },
-]
+];
 
-const GITHUB_RELEASES_URL = "https://api.github.com/repos/jakemor/kanna/releases"
-const CHANGELOG_CACHE_TTL_MS = 5 * 60 * 1000
+const GITHUB_RELEASES_URL =
+  "https://api.github.com/repos/jakemor/kanna/releases";
+const CHANGELOG_CACHE_TTL_MS = 5 * 60 * 1000;
 
 type GithubRelease = {
-  id: number
-  name: string | null
-  tag_name: string
-  html_url: string
-  published_at: string | null
-  body: string | null
-  prerelease: boolean
-  draft: boolean
-}
+  id: number;
+  name: string | null;
+  tag_name: string;
+  html_url: string;
+  published_at: string | null;
+  body: string | null;
+  prerelease: boolean;
+  draft: boolean;
+};
 
-type ChangelogStatus = "idle" | "loading" | "success" | "error"
+type ChangelogStatus = "idle" | "loading" | "success" | "error";
 
 type ChangelogCache = {
-  expiresAt: number
-  releases: GithubRelease[]
-}
+  expiresAt: number;
+  releases: GithubRelease[];
+};
 
-type FetchReleases = (input: string, init?: RequestInit) => Promise<Response>
+type FetchReleases = (input: string, init?: RequestInit) => Promise<Response>;
 
-let changelogCache: ChangelogCache | null = null
-const KEYBINDING_ACTIONS = Object.keys(KEYBINDING_ACTION_LABELS) as KeybindingAction[]
+let changelogCache: ChangelogCache | null = null;
+const KEYBINDING_ACTIONS = Object.keys(
+  KEYBINDING_ACTION_LABELS,
+) as KeybindingAction[];
 
 export function getKeybindingsSubtitle(filePathDisplay: string) {
-  return `Edit global app shortcuts stored in ${filePathDisplay}.`
+  return `Edit global app shortcuts stored in ${filePathDisplay}.`;
 }
 
 export function shouldPreviewChatSoundChange(
   previousValue: string,
-  nextValue: string
+  nextValue: string,
 ) {
-  return previousValue !== nextValue
+  return previousValue !== nextValue;
 }
 
 export function resetSettingsPageChangelogCache() {
-  changelogCache = null
+  changelogCache = null;
 }
 
-export async function fetchGithubReleases(fetchImpl: FetchReleases = fetch): Promise<GithubRelease[]> {
+export async function fetchGithubReleases(
+  fetchImpl: FetchReleases = fetch,
+): Promise<GithubRelease[]> {
   const response = await fetchImpl(GITHUB_RELEASES_URL, {
     headers: {
       Accept: "application/vnd.github+json",
     },
-  })
+  });
   if (!response.ok) {
-    throw new Error(`GitHub releases request failed with status ${response.status}`)
+    throw new Error(
+      `GitHub releases request failed with status ${response.status}`,
+    );
   }
 
-  const payload = await response.json() as GithubRelease[]
-  return payload.filter((release) => !release.draft)
+  const payload = (await response.json()) as GithubRelease[];
+  return payload.filter((release) => !release.draft);
 }
 
 export function getCachedChangelog() {
-  if (!changelogCache) return null
+  if (!changelogCache) return null;
   if (Date.now() >= changelogCache.expiresAt) {
-    changelogCache = null
-    return null
+    changelogCache = null;
+    return null;
   }
-  return changelogCache.releases
+  return changelogCache.releases;
 }
 
 export function setCachedChangelog(releases: GithubRelease[]) {
   changelogCache = {
     releases,
     expiresAt: Date.now() + CHANGELOG_CACHE_TTL_MS,
-  }
+  };
 }
 
-export async function loadChangelog(options?: { force?: boolean; fetchImpl?: FetchReleases }) {
-  const cached = options?.force ? null : getCachedChangelog()
+export async function loadChangelog(options?: {
+  force?: boolean;
+  fetchImpl?: FetchReleases;
+}) {
+  const cached = options?.force ? null : getCachedChangelog();
   if (cached) {
-    return cached
+    return cached;
   }
 
-  const releases = await fetchGithubReleases(options?.fetchImpl)
-  setCachedChangelog(releases)
-  return releases
+  const releases = await fetchGithubReleases(options?.fetchImpl);
+  setCachedChangelog(releases);
+  return releases;
 }
 
 export function formatPublishedDate(value: string | null) {
-  if (!value) return "Unpublished"
+  if (!value) return "Unpublished";
 
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return "Unknown date"
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Unknown date";
 
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
-  }).format(parsed)
+  }).format(parsed);
 }
 
 export function ChangelogSection({
@@ -227,22 +279,25 @@ export function ChangelogSection({
   onInstallUpdate,
   onCheckForUpdates,
 }: {
-  status: ChangelogStatus
-  releases: GithubRelease[]
-  error: string | null
-  onRetry: () => void
-  updateSnapshot: UpdateSnapshot | null
-  currentVersion: string
-  onInstallUpdate: () => void
-  onCheckForUpdates: () => void
+  status: ChangelogStatus;
+  releases: GithubRelease[];
+  error: string | null;
+  onRetry: () => void;
+  updateSnapshot: UpdateSnapshot | null;
+  currentVersion: string;
+  onInstallUpdate: () => void;
+  onCheckForUpdates: () => void;
 }) {
-  const latestVersion = updateSnapshot?.latestVersion ?? releases[0]?.tag_name ?? "Unknown"
-  const currentVersionLabel = updateSnapshot?.currentVersion ?? currentVersion
-  const isChecking = updateSnapshot?.status === "checking"
-  const isUpdating = updateSnapshot?.status === "updating" || updateSnapshot?.status === "restart_pending"
-  const canInstallUpdate = updateSnapshot?.updateAvailable === true
-  const normalizedLatestVersion = latestVersion.replace(/^v/i, "")
-  const normalizedCurrentVersion = currentVersionLabel.replace(/^v/i, "")
+  const latestVersion =
+    updateSnapshot?.latestVersion ?? releases[0]?.tag_name ?? "Unknown";
+  const currentVersionLabel = updateSnapshot?.currentVersion ?? currentVersion;
+  const isChecking = updateSnapshot?.status === "checking";
+  const isUpdating =
+    updateSnapshot?.status === "updating" ||
+    updateSnapshot?.status === "restart_pending";
+  const canInstallUpdate = updateSnapshot?.updateAvailable === true;
+  const normalizedLatestVersion = latestVersion.replace(/^v/i, "");
+  const normalizedCurrentVersion = currentVersionLabel.replace(/^v/i, "");
 
   return (
     <div className="space-y-4">
@@ -259,7 +314,9 @@ export function ChangelogSection({
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-sm font-medium text-foreground">Could not load changelog</div>
+              <div className="text-sm font-medium text-foreground">
+                Could not load changelog
+              </div>
               <div className="mt-1 text-sm text-muted-foreground">
                 {error ?? "Unable to load changelog."}
               </div>
@@ -277,7 +334,9 @@ export function ChangelogSection({
 
       {status === "success" && releases.length === 0 ? (
         <div className="rounded-lg border border-border bg-card/30 px-6 py-8">
-          <div className="text-sm font-medium text-foreground">No releases yet</div>
+          <div className="text-sm font-medium text-foreground">
+            No releases yet
+          </div>
           <div className="mt-2 text-sm text-muted-foreground">
             GitHub did not return any published releases for this repository.
           </div>
@@ -296,109 +355,104 @@ export function ChangelogSection({
         </div>
       ) : null}
 
-      {status === "success" && releases.length > 0 ? (
-        releases.map((release) => {
-          const normalizedTag = release.tag_name.replace(/^v/i, "")
-          const isLatestRelease = normalizedTag === normalizedLatestVersion
-          const isCurrentRelease = normalizedTag === normalizedCurrentVersion
+      {status === "success" && releases.length > 0
+        ? releases.map((release) => {
+            const normalizedTag = release.tag_name.replace(/^v/i, "");
+            const isLatestRelease = normalizedTag === normalizedLatestVersion;
+            const isCurrentRelease = normalizedTag === normalizedCurrentVersion;
 
-          return (
-            <article
-              key={release.id}
-              className={cn(
-                "rounded-xl border bg-card/30 pl-6 pr-4 py-4",
-                isLatestRelease ? "border-border bg-muted" : "border-border"
-              )}
-            >
+            return (
+              <article
+                key={release.id}
+                className={cn(
+                  "rounded-xl border bg-card/30 pl-6 pr-4 py-4",
+                  isLatestRelease ? "border-border bg-muted" : "border-border",
+                )}
+              >
+                <div className="flex flex-row items-center min-w-0 flex-1 gap-3 ">
+                  <div className="flex flex-row items-center min-w-0 flex-1 gap-2 ">
+                    <div className="text-lg font-semibold tracking-[-0.2px] text-foreground">
+                      {release.name?.trim() || release.tag_name}
+                    </div>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <span>{formatPublishedDate(release.published_at)}</span>
+                      {release.prerelease ? (
+                        <span className="rounded-full border border-border px-2.5 py-1 uppercase tracking-wide">
+                          Prerelease
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
 
-            <div className="flex flex-row items-center min-w-0 flex-1 gap-3 ">
-              <div className="flex flex-row items-center min-w-0 flex-1 gap-2 ">
-                <div className="text-lg font-semibold tracking-[-0.2px] text-foreground">
-                  {release.name?.trim() || release.tag_name}
-                </div>
-                <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <span>{formatPublishedDate(release.published_at)}</span>
-                  {release.prerelease ? (
-                    <span className="rounded-full border border-border px-2.5 py-1 uppercase tracking-wide">
-                      Prerelease
-                    </span>
-                  ) : null}
-                  
-                </div>
-              </div>
-
-
-              <div className="flex flex-row items-center justify-end min-w-0 flex-1 gap-2 ">
-                {/* <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex flex-row items-center justify-end min-w-0 flex-1 gap-2 ">
+                    {/* <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   
                   <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-foreground/80">
                     {release.tag_name}
                   </span>
                 </div> */}
 
-             
-            
-                  <a
-                  href={release.html_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="View release on GitHub"
-                  className={cn(
-                    buttonVariants({ variant: "ghost", size: "icon-sm" }),
-                    "h-8 w-8 shrink-0 rounded-md hover:!bg-transparent hover:border-border/0"
-                  )}
-                >
-                  <GitHubIcon className="h-4 w-4" />
-                </a>
+                    <a
+                      href={release.html_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="View release on GitHub"
+                      className={cn(
+                        buttonVariants({ variant: "ghost", size: "icon-sm" }),
+                        "h-8 w-8 shrink-0 rounded-md hover:!bg-transparent hover:border-border/0",
+                      )}
+                    >
+                      <GitHubIcon className="h-4 w-4" />
+                    </a>
 
-                  {isCurrentRelease ? (
-                      
-                  <span
-                    className={cn(
-                      "bg-transparent border border-border text-secondary-foreground",
-                      'h-9 rounded-full px-3 text-sm',
-                      "h-auto gap-1.5 px-3 py-1.5"
-                    )}
-                  >
-                    Current
-                  </span>
-                  ) : null}
-                  
-                
-                  { isLatestRelease && canInstallUpdate  ? (
-                  <SettingsHeaderButton
-                    variant="default"
-                    className=""
-                    onClick={onInstallUpdate}
-                    disabled={isUpdating}
-                  >
-                    <div className="flex flex-row items-center justify-center gap-2">
-                    <DownloadCloud className="size-4"/>
-                    {isUpdating ? "Updating…" : "Update"}
-                    </div>
-                  </SettingsHeaderButton>
-                ) : null}
-              </div>
-            
-             
-            </div>
+                    {isCurrentRelease ? (
+                      <span
+                        className={cn(
+                          "bg-transparent border border-border text-secondary-foreground",
+                          "h-9 rounded-full px-3 text-sm",
+                          "h-auto gap-1.5 px-3 py-1.5",
+                        )}
+                      >
+                        Current
+                      </span>
+                    ) : null}
 
+                    {isLatestRelease && canInstallUpdate ? (
+                      <SettingsHeaderButton
+                        variant="default"
+                        className=""
+                        onClick={onInstallUpdate}
+                        disabled={isUpdating}
+                      >
+                        <div className="flex flex-row items-center justify-center gap-2">
+                          <DownloadCloud className="size-4" />
+                          {isUpdating ? "Updating…" : "Update"}
+                        </div>
+                      </SettingsHeaderButton>
+                    ) : null}
+                  </div>
+                </div>
 
-            {release.body?.trim() ? (
-              <div className="prose prose-sm mt-5 max-w-none text-foreground dark:prose-invert">
-                <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                  {release.body}
-                </Markdown>
-              </div>
-            ) : (
-              <div className="mt-5 text-sm text-muted-foreground">No release notes were provided.</div>
-            )}
-          </article>
-          )
-        })
-      ) : null}
+                {release.body?.trim() ? (
+                  <div className="prose prose-sm mt-5 max-w-none text-foreground dark:prose-invert">
+                    <Markdown
+                      remarkPlugins={[remarkGfm]}
+                      components={markdownComponents}
+                    >
+                      {release.body}
+                    </Markdown>
+                  </div>
+                ) : (
+                  <div className="mt-5 text-sm text-muted-foreground">
+                    No release notes were provided.
+                  </div>
+                )}
+              </article>
+            );
+          })
+        : null}
     </div>
-  )
+  );
 }
 
 function GitHubIcon({ className }: { className?: string }) {
@@ -411,7 +465,7 @@ function GitHubIcon({ className }: { className?: string }) {
     >
       <path d="M12 .5C5.649.5.5 5.649.5 12A11.5 11.5 0 0 0 8.36 22.04c.575.106.785-.25.785-.556 0-.274-.01-1-.015-1.962-3.181.691-3.853-1.532-3.853-1.532-.52-1.322-1.27-1.674-1.27-1.674-1.038-.71.08-.695.08-.695 1.148.08 1.752 1.178 1.752 1.178 1.02 1.748 2.676 1.243 3.328.95.103-.738.399-1.243.725-1.53-2.54-.289-5.211-1.27-5.211-5.65 0-1.248.446-2.27 1.177-3.07-.118-.288-.51-1.45.112-3.024 0 0 .96-.307 3.145 1.173A10.91 10.91 0 0 1 12 6.03c.973.004 1.954.132 2.87.387 2.182-1.48 3.14-1.173 3.14-1.173.625 1.573.233 2.736.115 3.024.734.8 1.175 1.822 1.175 3.07 0 4.39-2.676 5.358-5.224 5.642.41.353.776 1.05.776 2.117 0 1.528-.014 2.761-.014 3.136 0 .309.207.668.79.555A11.502 11.502 0 0 0 23.5 12C23.5 5.649 18.351.5 12 .5Z" />
     </svg>
-  )
+  );
 }
 
 function SettingsRow({
@@ -421,148 +475,218 @@ function SettingsRow({
   bordered = true,
   alignStart = false,
 }: {
-  title: string
-  description: ReactNode
-  children: ReactNode
-  bordered?: boolean
-  alignStart?: boolean
+  title: string;
+  description: ReactNode;
+  children: ReactNode;
+  bordered?: boolean;
+  alignStart?: boolean;
 }) {
   return (
     <div className={bordered ? "border-t border-border" : undefined}>
       <div
         className={cn(
           "flex flex-col gap-4 py-5 md:flex-row md:justify-between md:gap-8",
-          alignStart ? "md:items-start" : "md:items-center"
+          alignStart ? "md:items-start" : "md:items-center",
         )}
       >
         <div className="min-w-0 max-w-xl">
           <div className="text-sm font-medium text-foreground">{title}</div>
-          <div className="mt-1 text-[13px] text-muted-foreground">{description}</div>
+          <div className="mt-1 text-[13px] text-muted-foreground">
+            {description}
+          </div>
         </div>
-        <div className="flex items-center justify-start md:shrink-0 md:justify-end">{children}</div>
+        <div className="flex items-center justify-start md:shrink-0 md:justify-end">
+          {children}
+        </div>
       </div>
     </div>
-  )
+  );
 }
 
 export function SettingsPage() {
-  const navigate = useNavigate()
-  const { sectionId } = useParams<{ sectionId: string }>()
-  const state = useOutletContext<KannaState>()
-  const { theme, setTheme } = useTheme()
-  const [changelogStatus, setChangelogStatus] = useState<ChangelogStatus>("idle")
-  const [signingOut, setSigningOut] = useState(false)
-  const [authEnabled, setAuthEnabled] = useState(false)
-  const [releases, setReleases] = useState<GithubRelease[]>([])
-  const [changelogError, setChangelogError] = useState<string | null>(null)
-  const selectedPage = resolveSettingsSectionId(sectionId) ?? "general"
-  const isConnecting = state.connectionStatus === "connecting" || !state.localProjectsReady
-  const machineName = state.localProjects?.machine.displayName ?? "Unavailable"
-  const projectCount = state.localProjects?.projects.length ?? 0
-  const appVersion = SDK_CLIENT_APP.split("/")[1] ?? "unknown"
-  const scrollbackLines = useTerminalPreferencesStore((store) => store.scrollbackLines)
-  const minColumnWidth = useTerminalPreferencesStore((store) => store.minColumnWidth)
-  const editorPreset = useTerminalPreferencesStore((store) => store.editorPreset)
-  const editorCommandTemplate = useTerminalPreferencesStore((store) => store.editorCommandTemplate)
-  const setScrollbackLines = useTerminalPreferencesStore((store) => store.setScrollbackLines)
-  const setMinColumnWidth = useTerminalPreferencesStore((store) => store.setMinColumnWidth)
-  const setEditorPreset = useTerminalPreferencesStore((store) => store.setEditorPreset)
-  const setEditorCommandTemplate = useTerminalPreferencesStore((store) => store.setEditorCommandTemplate)
-  const chatSoundPreference = useChatSoundPreferencesStore((store) => store.chatSoundPreference)
-  const chatSoundId = useChatSoundPreferencesStore((store) => store.chatSoundId)
-  const setChatSoundPreference = useChatSoundPreferencesStore((store) => store.setChatSoundPreference)
-  const setChatSoundId = useChatSoundPreferencesStore((store) => store.setChatSoundId)
-  const keybindings = state.keybindings
-  const appSettings = state.appSettings
-  const llmProvider = state.llmProvider
-  const defaultProvider = useChatPreferencesStore((store) => store.defaultProvider)
-  const providerDefaults = useChatPreferencesStore((store) => store.providerDefaults)
-  const setDefaultProvider = useChatPreferencesStore((store) => store.setDefaultProvider)
-  const setProviderDefaultModel = useChatPreferencesStore((store) => store.setProviderDefaultModel)
-  const setProviderDefaultModelOptions = useChatPreferencesStore((store) => store.setProviderDefaultModelOptions)
-  const setProviderDefaultPlanMode = useChatPreferencesStore((store) => store.setProviderDefaultPlanMode)
-  const resolvedKeybindings = useMemo(() => getResolvedKeybindings(keybindings), [keybindings])
-  const keybindingsFilePathDisplay = resolvedKeybindings.filePathDisplay || getKeybindingsFilePathDisplay()
-  const [scrollbackDraft, setScrollbackDraft] = useState(String(scrollbackLines))
-  const [minColumnWidthDraft, setMinColumnWidthDraft] = useState(String(minColumnWidth))
-  const [editorCommandDraft, setEditorCommandDraft] = useState(editorCommandTemplate)
-  const [keybindingDrafts, setKeybindingDrafts] = useState<Record<string, string>>({})
-  const [keybindingsError, setKeybindingsError] = useState<string | null>(null)
-  const [appSettingsError, setAppSettingsError] = useState<string | null>(null)
-  const [analyticsDialogOpen, setAnalyticsDialogOpen] = useState(false)
+  const navigate = useNavigate();
+  const { sectionId } = useParams<{ sectionId: string }>();
+  const state = useOutletContext<KannaState>();
+  const { theme, setTheme } = useTheme();
+  const [changelogStatus, setChangelogStatus] =
+    useState<ChangelogStatus>("idle");
+  const [signingOut, setSigningOut] = useState(false);
+  const [authEnabled, setAuthEnabled] = useState(false);
+  const [releases, setReleases] = useState<GithubRelease[]>([]);
+  const [changelogError, setChangelogError] = useState<string | null>(null);
+  const selectedPage = resolveSettingsSectionId(sectionId) ?? "general";
+  const isConnecting =
+    state.connectionStatus === "connecting" || !state.localProjectsReady;
+  const machineName = state.localProjects?.machine.displayName ?? "Unavailable";
+  const projectCount = state.localProjects?.projects.length ?? 0;
+  const appVersion = SDK_CLIENT_APP.split("/")[1] ?? "unknown";
+  const scrollbackLines = useTerminalPreferencesStore(
+    (store) => store.scrollbackLines,
+  );
+  const minColumnWidth = useTerminalPreferencesStore(
+    (store) => store.minColumnWidth,
+  );
+  const editorPreset = useTerminalPreferencesStore(
+    (store) => store.editorPreset,
+  );
+  const editorCommandTemplate = useTerminalPreferencesStore(
+    (store) => store.editorCommandTemplate,
+  );
+  const setScrollbackLines = useTerminalPreferencesStore(
+    (store) => store.setScrollbackLines,
+  );
+  const setMinColumnWidth = useTerminalPreferencesStore(
+    (store) => store.setMinColumnWidth,
+  );
+  const setEditorPreset = useTerminalPreferencesStore(
+    (store) => store.setEditorPreset,
+  );
+  const setEditorCommandTemplate = useTerminalPreferencesStore(
+    (store) => store.setEditorCommandTemplate,
+  );
+  const chatSoundPreference = useChatSoundPreferencesStore(
+    (store) => store.chatSoundPreference,
+  );
+  const chatSoundId = useChatSoundPreferencesStore(
+    (store) => store.chatSoundId,
+  );
+  const setChatSoundPreference = useChatSoundPreferencesStore(
+    (store) => store.setChatSoundPreference,
+  );
+  const setChatSoundId = useChatSoundPreferencesStore(
+    (store) => store.setChatSoundId,
+  );
+  const keybindings = state.keybindings;
+  const appSettings = state.appSettings;
+  const llmProvider = state.llmProvider;
+  const defaultProvider = useChatPreferencesStore(
+    (store) => store.defaultProvider,
+  );
+  const providerDefaults = useChatPreferencesStore(
+    (store) => store.providerDefaults,
+  );
+  const setDefaultProvider = useChatPreferencesStore(
+    (store) => store.setDefaultProvider,
+  );
+  const setProviderDefaultModel = useChatPreferencesStore(
+    (store) => store.setProviderDefaultModel,
+  );
+  const setProviderDefaultModelOptions = useChatPreferencesStore(
+    (store) => store.setProviderDefaultModelOptions,
+  );
+  const setProviderDefaultPlanMode = useChatPreferencesStore(
+    (store) => store.setProviderDefaultPlanMode,
+  );
+  const resolvedKeybindings = useMemo(
+    () => getResolvedKeybindings(keybindings),
+    [keybindings],
+  );
+  const keybindingsFilePathDisplay =
+    resolvedKeybindings.filePathDisplay || getKeybindingsFilePathDisplay();
+  const [scrollbackDraft, setScrollbackDraft] = useState(
+    String(scrollbackLines),
+  );
+  const [minColumnWidthDraft, setMinColumnWidthDraft] = useState(
+    String(minColumnWidth),
+  );
+  const [editorCommandDraft, setEditorCommandDraft] = useState(
+    editorCommandTemplate,
+  );
+  const [keybindingDrafts, setKeybindingDrafts] = useState<
+    Record<string, string>
+  >({});
+  const [keybindingsError, setKeybindingsError] = useState<string | null>(null);
+  const [appSettingsError, setAppSettingsError] = useState<string | null>(null);
+  const [analyticsDialogOpen, setAnalyticsDialogOpen] = useState(false);
   const [llmProviderDraft, setLlmProviderDraft] = useState({
     provider: "openai" as LlmProviderKind,
     apiKey: "",
     model: "",
     baseUrl: "",
-  })
-  const [llmProviderError, setLlmProviderError] = useState<string | null>(null)
-  const [llmValidationStatus, setLlmValidationStatus] = useState<"idle" | "valid" | "invalid">("idle")
-  const [llmValidationError, setLlmValidationError] = useState<unknown | null>(null)
-  const [llmValidationDialogOpen, setLlmValidationDialogOpen] = useState(false)
-  const updateSnapshot = state.updateSnapshot
-  const handleWriteAppSettings = state.handleWriteAppSettings
-  const handleReadLlmProvider = state.handleReadLlmProvider
-  const handleWriteLlmProvider = state.handleWriteLlmProvider
-  const handleValidateLlmProvider = state.handleValidateLlmProvider
-  const updateStatusLabel = updateSnapshot?.status === "checking"
-    ? "Checking for updates…"
-    : updateSnapshot?.status === "updating"
-      ? "Installing update…"
-      : updateSnapshot?.status === "restart_pending"
-        ? "Restarting Kanna…"
-        : updateSnapshot?.status === "available"
-          ? `Update available${updateSnapshot.latestVersion ? `: ${updateSnapshot.latestVersion}` : ""}`
-          : updateSnapshot?.status === "up_to_date"
-            ? "Up to date"
-            : updateSnapshot?.status === "error"
-              ? "Update check failed"
-              : "Not checked yet"
+  });
+  const [llmProviderError, setLlmProviderError] = useState<string | null>(null);
+  const [llmValidationStatus, setLlmValidationStatus] = useState<
+    "idle" | "valid" | "invalid"
+  >("idle");
+  const [llmValidationError, setLlmValidationError] = useState<unknown | null>(
+    null,
+  );
+  const [llmValidationDialogOpen, setLlmValidationDialogOpen] = useState(false);
+  const piModels = usePiModelsStore((s) => s.models);
+  const piModelsLoading = usePiModelsStore((s) => s.loading);
+  const piModelsInitialized = usePiModelsStore((s) => s.initialized);
+  const fetchPiModels = usePiModelsStore((s) => s.fetch);
+  const updateSnapshot = state.updateSnapshot;
+  const handleWriteAppSettings = state.handleWriteAppSettings;
+  const handleReadLlmProvider = state.handleReadLlmProvider;
+  const handleWriteLlmProvider = state.handleWriteLlmProvider;
+  const handleValidateLlmProvider = state.handleValidateLlmProvider;
+  const updateStatusLabel =
+    updateSnapshot?.status === "checking"
+      ? "Checking for updates…"
+      : updateSnapshot?.status === "updating"
+        ? "Installing update…"
+        : updateSnapshot?.status === "restart_pending"
+          ? "Restarting Kanna…"
+          : updateSnapshot?.status === "available"
+            ? `Update available${updateSnapshot.latestVersion ? `: ${updateSnapshot.latestVersion}` : ""}`
+            : updateSnapshot?.status === "up_to_date"
+              ? "Up to date"
+              : updateSnapshot?.status === "error"
+                ? "Update check failed"
+                : "Not checked yet";
 
   useEffect(() => {
-    setScrollbackDraft(String(scrollbackLines))
-  }, [scrollbackLines])
+    setScrollbackDraft(String(scrollbackLines));
+  }, [scrollbackLines]);
 
   useEffect(() => {
-    setMinColumnWidthDraft(String(minColumnWidth))
-  }, [minColumnWidth])
+    setMinColumnWidthDraft(String(minColumnWidth));
+  }, [minColumnWidth]);
 
   useEffect(() => {
-    setEditorCommandDraft(editorCommandTemplate)
-  }, [editorCommandTemplate])
+    setEditorCommandDraft(editorCommandTemplate);
+  }, [editorCommandTemplate]);
 
   useEffect(() => {
-    setKeybindingDrafts(Object.fromEntries(
-      KEYBINDING_ACTIONS.map((action) => [
-        action,
-        formatKeybindingInput(resolvedKeybindings.bindings[action]),
-      ])
-    ))
-  }, [resolvedKeybindings])
+    setKeybindingDrafts(
+      Object.fromEntries(
+        KEYBINDING_ACTIONS.map((action) => [
+          action,
+          formatKeybindingInput(resolvedKeybindings.bindings[action]),
+        ]),
+      ),
+    );
+  }, [resolvedKeybindings]);
 
   useEffect(() => {
-    if (!llmProvider) return
+    if (!llmProvider) return;
     setLlmProviderDraft({
       provider: llmProvider.provider,
       apiKey: llmProvider.apiKey,
       model: llmProvider.model,
       baseUrl: llmProvider.baseUrl,
-    })
-  }, [llmProvider])
+    });
+  }, [llmProvider]);
 
   useEffect(() => {
-    setLlmValidationStatus("idle")
-    setLlmValidationError(null)
-  }, [llmProviderDraft.provider, llmProviderDraft.apiKey, llmProviderDraft.model, llmProviderDraft.baseUrl])
+    setLlmValidationStatus("idle");
+    setLlmValidationError(null);
+  }, [
+    llmProviderDraft.provider,
+    llmProviderDraft.apiKey,
+    llmProviderDraft.model,
+    llmProviderDraft.baseUrl,
+  ]);
 
   useEffect(() => {
-    if (!sectionId) return
-    if (resolveSettingsSectionId(sectionId)) return
-    navigate("/settings/general", { replace: true })
-  }, [navigate, sectionId])
+    if (!sectionId) return;
+    if (resolveSettingsSectionId(sectionId)) return;
+    navigate("/settings/general", { replace: true });
+  }, [navigate, sectionId]);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     void fetch("/auth/status", {
       method: "GET",
@@ -572,223 +696,333 @@ export function SettingsPage() {
       },
     })
       .then(async (response) => {
-        if (!response.ok) return { enabled: false }
-        return await response.json() as { enabled?: boolean }
+        if (!response.ok) return { enabled: false };
+        return (await response.json()) as { enabled?: boolean };
       })
       .then((payload) => {
-        if (cancelled) return
-        setAuthEnabled(payload.enabled === true)
+        if (cancelled) return;
+        setAuthEnabled(payload.enabled === true);
       })
       .catch(() => {
-        if (cancelled) return
-        setAuthEnabled(false)
-      })
+        if (cancelled) return;
+        setAuthEnabled(false);
+      });
 
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
-    if (selectedPage !== "providers" || isConnecting) return
-    void handleReadLlmProvider()
-  }, [handleReadLlmProvider, isConnecting, selectedPage])
+    if (selectedPage !== "providers" || isConnecting) return;
+    void handleReadLlmProvider();
+  }, [handleReadLlmProvider, isConnecting, selectedPage]);
 
   useEffect(() => {
-    if (selectedPage !== "changelog" || isConnecting) return
+    if (selectedPage !== "providers" || isConnecting) return;
+    if (piModelsInitialized) return;
+    void fetchPiModels(state.fetchPiModels);
+  }, [
+    isConnecting,
+    selectedPage,
+    piModelsInitialized,
+    fetchPiModels,
+    state.fetchPiModels,
+  ]);
 
-    let cancelled = false
-    setChangelogStatus("loading")
-    setChangelogError(null)
+  useEffect(() => {
+    if (selectedPage !== "changelog" || isConnecting) return;
+
+    let cancelled = false;
+    setChangelogStatus("loading");
+    setChangelogError(null);
 
     void loadChangelog()
       .then((nextReleases) => {
-        if (cancelled) return
-        setReleases(nextReleases)
-        setChangelogStatus("success")
+        if (cancelled) return;
+        setReleases(nextReleases);
+        setChangelogStatus("success");
       })
       .catch((error: unknown) => {
-        if (cancelled) return
-        setChangelogError(error instanceof Error ? error.message : "Unable to load changelog.")
-        setChangelogStatus("error")
-      })
+        if (cancelled) return;
+        setChangelogError(
+          error instanceof Error ? error.message : "Unable to load changelog.",
+        );
+        setChangelogStatus("error");
+      });
 
     return () => {
-      cancelled = true
-    }
-  }, [isConnecting, selectedPage])
+      cancelled = true;
+    };
+  }, [isConnecting, selectedPage]);
 
   function commitScrollback() {
-    const nextValue = Number(scrollbackDraft)
+    const nextValue = Number(scrollbackDraft);
     if (!Number.isFinite(nextValue)) {
-      setScrollbackDraft(String(scrollbackLines))
-      return
+      setScrollbackDraft(String(scrollbackLines));
+      return;
     }
-    setScrollbackLines(nextValue)
-    void handleWriteAppSettings({ terminal: { scrollbackLines: nextValue } }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save terminal settings.")
-    })
+    setScrollbackLines(nextValue);
+    void handleWriteAppSettings({
+      terminal: { scrollbackLines: nextValue },
+    }).catch((error) => {
+      setAppSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save terminal settings.",
+      );
+    });
   }
 
   function commitMinColumnWidth() {
-    const nextValue = Number(minColumnWidthDraft)
+    const nextValue = Number(minColumnWidthDraft);
     if (!Number.isFinite(nextValue)) {
-      setMinColumnWidthDraft(String(minColumnWidth))
-      return
+      setMinColumnWidthDraft(String(minColumnWidth));
+      return;
     }
-    setMinColumnWidth(nextValue)
-    void handleWriteAppSettings({ terminal: { minColumnWidth: nextValue } }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save terminal settings.")
-    })
+    setMinColumnWidth(nextValue);
+    void handleWriteAppSettings({
+      terminal: { minColumnWidth: nextValue },
+    }).catch((error) => {
+      setAppSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save terminal settings.",
+      );
+    });
   }
 
-  function handleNumberInputKeyDown(event: KeyboardEvent<HTMLInputElement>, commit: () => void) {
-    if (event.key !== "Enter") return
-    commit()
-    event.currentTarget.blur()
+  function handleNumberInputKeyDown(
+    event: KeyboardEvent<HTMLInputElement>,
+    commit: () => void,
+  ) {
+    if (event.key !== "Enter") return;
+    commit();
+    event.currentTarget.blur();
   }
 
-  function handleTextInputKeyDown(event: KeyboardEvent<HTMLInputElement>, commit: () => void) {
-    if (event.key !== "Enter") return
-    commit()
-    event.currentTarget.blur()
+  function handleTextInputKeyDown(
+    event: KeyboardEvent<HTMLInputElement>,
+    commit: () => void,
+  ) {
+    if (event.key !== "Enter") return;
+    commit();
+    event.currentTarget.blur();
   }
 
   function commitEditorCommand() {
-    setEditorCommandTemplate(editorCommandDraft)
-    void handleWriteAppSettings({ editor: { commandTemplate: editorCommandDraft } }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save editor settings.")
-    })
+    setEditorCommandTemplate(editorCommandDraft);
+    void handleWriteAppSettings({
+      editor: { commandTemplate: editorCommandDraft },
+    }).catch((error) => {
+      setAppSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save editor settings.",
+      );
+    });
   }
 
   function handleThemeChange(nextTheme: typeof theme) {
-    setTheme(nextTheme)
+    setTheme(nextTheme);
     void handleWriteAppSettings({ theme: nextTheme }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save theme settings.")
-    })
+      setAppSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save theme settings.",
+      );
+    });
   }
 
   function handleEditorPresetChange(nextPreset: EditorPreset) {
-    setEditorPreset(nextPreset)
-    const commandTemplate = nextPreset === "custom" ? editorCommandTemplate : getDefaultEditorCommandTemplate(nextPreset)
+    setEditorPreset(nextPreset);
+    const commandTemplate =
+      nextPreset === "custom"
+        ? editorCommandTemplate
+        : getDefaultEditorCommandTemplate(nextPreset);
     void handleWriteAppSettings({
       editor: {
         preset: nextPreset,
         commandTemplate,
       },
     }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save editor settings.")
-    })
+      setAppSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save editor settings.",
+      );
+    });
   }
 
   function handleChatSoundPreferenceChange(nextValue: ChatSoundPreference) {
     if (!shouldPreviewChatSoundChange(chatSoundPreference, nextValue)) {
-      return
+      return;
     }
 
-    setChatSoundPreference(nextValue)
-    void handleWriteAppSettings({ chatSoundPreference: nextValue }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save chat sound settings.")
-    })
-    void playChatNotificationSound(chatSoundId, 1).catch(() => undefined)
+    setChatSoundPreference(nextValue);
+    void handleWriteAppSettings({ chatSoundPreference: nextValue }).catch(
+      (error) => {
+        setAppSettingsError(
+          error instanceof Error
+            ? error.message
+            : "Unable to save chat sound settings.",
+        );
+      },
+    );
+    void playChatNotificationSound(chatSoundId, 1).catch(() => undefined);
   }
 
   function handleChatSoundIdChange(nextValue: ChatSoundId) {
     if (!shouldPreviewChatSoundChange(chatSoundId, nextValue)) {
-      return
+      return;
     }
 
-    setChatSoundId(nextValue)
+    setChatSoundId(nextValue);
     void handleWriteAppSettings({ chatSoundId: nextValue }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save chat sound settings.")
-    })
-    void playChatNotificationSound(nextValue, 1).catch(() => undefined)
+      setAppSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save chat sound settings.",
+      );
+    });
+    void playChatNotificationSound(nextValue, 1).catch(() => undefined);
   }
 
-  async function handleAnalyticsPreferenceChange(nextValue: "enabled" | "disabled") {
+  async function handleAnalyticsPreferenceChange(
+    nextValue: "enabled" | "disabled",
+  ) {
     try {
-      setAppSettingsError(null)
-      await handleWriteAppSettings({ analyticsEnabled: nextValue === "enabled" })
+      setAppSettingsError(null);
+      await handleWriteAppSettings({
+        analyticsEnabled: nextValue === "enabled",
+      });
     } catch (error) {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save analytics settings.")
+      setAppSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save analytics settings.",
+      );
     }
   }
 
   function handleDefaultProviderChange(nextValue: "last_used" | AgentProvider) {
-    setDefaultProvider(nextValue)
-    void handleWriteAppSettings({ defaultProvider: nextValue }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save provider settings.")
-    })
+    setDefaultProvider(nextValue);
+    void handleWriteAppSettings({ defaultProvider: nextValue }).catch(
+      (error) => {
+        setAppSettingsError(
+          error instanceof Error
+            ? error.message
+            : "Unable to save provider settings.",
+        );
+      },
+    );
   }
 
-  function handleProviderDefaultModelChange(provider: AgentProvider, model: string) {
-    setProviderDefaultModel(provider, model)
-    void handleWriteAppSettings({ providerDefaults: { [provider]: { model } } }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save provider settings.")
-    })
+  function handleProviderDefaultModelChange(
+    provider: AgentProvider,
+    model: string,
+  ) {
+    setProviderDefaultModel(provider, model);
+    void handleWriteAppSettings({
+      providerDefaults: { [provider]: { model } },
+    }).catch((error) => {
+      setAppSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save provider settings.",
+      );
+    });
   }
 
   function handleProviderDefaultModelOptionsChange(
     provider: AgentProvider,
-    modelOptions: Partial<typeof providerDefaults[typeof provider]["modelOptions"]>
+    modelOptions: Partial<
+      (typeof providerDefaults)[typeof provider]["modelOptions"]
+    >,
   ) {
-    setProviderDefaultModelOptions(provider, modelOptions)
-    void handleWriteAppSettings({ providerDefaults: { [provider]: { modelOptions } } }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save provider settings.")
-    })
+    setProviderDefaultModelOptions(provider, modelOptions);
+    void handleWriteAppSettings({
+      providerDefaults: { [provider]: { modelOptions } },
+    }).catch((error) => {
+      setAppSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save provider settings.",
+      );
+    });
   }
 
-  function handleProviderDefaultPlanModeChange(provider: AgentProvider, planMode: boolean) {
-    setProviderDefaultPlanMode(provider, planMode)
-    void handleWriteAppSettings({ providerDefaults: { [provider]: { planMode } } }).catch((error) => {
-      setAppSettingsError(error instanceof Error ? error.message : "Unable to save provider settings.")
-    })
+  function handleProviderDefaultPlanModeChange(
+    provider: AgentProvider,
+    planMode: boolean,
+  ) {
+    setProviderDefaultPlanMode(provider, planMode);
+    void handleWriteAppSettings({
+      providerDefaults: { [provider]: { planMode } },
+    }).catch((error) => {
+      setAppSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save provider settings.",
+      );
+    });
   }
 
   async function commitKeybindings() {
     try {
-      setKeybindingsError(null)
+      setKeybindingsError(null);
       await state.socket.command({
         type: "settings.writeKeybindings",
         bindings: buildKeybindingPayload(keybindingDrafts),
-      })
+      });
     } catch (error) {
-      setKeybindingsError(error instanceof Error ? error.message : "Unable to save keybindings.")
+      setKeybindingsError(
+        error instanceof Error ? error.message : "Unable to save keybindings.",
+      );
     }
   }
 
-  async function restoreDefaultKeybinding(action: keyof typeof KEYBINDING_ACTION_LABELS) {
+  async function restoreDefaultKeybinding(
+    action: keyof typeof KEYBINDING_ACTION_LABELS,
+  ) {
     const nextDrafts = {
       ...keybindingDrafts,
       [action]: formatKeybindingInput(DEFAULT_KEYBINDINGS[action]),
-    }
-    setKeybindingDrafts(nextDrafts)
+    };
+    setKeybindingDrafts(nextDrafts);
 
     try {
-      setKeybindingsError(null)
+      setKeybindingsError(null);
       await state.socket.command({
         type: "settings.writeKeybindings",
         bindings: buildKeybindingPayload(nextDrafts),
-      })
+      });
     } catch (error) {
-      setKeybindingsError(error instanceof Error ? error.message : "Unable to save keybindings.")
+      setKeybindingsError(
+        error instanceof Error ? error.message : "Unable to save keybindings.",
+      );
     }
   }
 
   async function commitLlmProvider(nextValue = llmProviderDraft) {
     try {
-      setLlmProviderError(null)
-      await handleWriteLlmProvider(nextValue)
-      const validation = await handleValidateLlmProvider(nextValue)
-      setLlmValidationStatus(validation.ok ? "valid" : "invalid")
-      setLlmValidationError(validation.error)
+      setLlmProviderError(null);
+      await handleWriteLlmProvider(nextValue);
+      const validation = await handleValidateLlmProvider(nextValue);
+      setLlmValidationStatus(validation.ok ? "valid" : "invalid");
+      setLlmValidationError(validation.error);
     } catch (error) {
-      const fallbackError = error instanceof Error
-        ? { name: error.name, message: error.message }
-        : error
-      setLlmValidationStatus("invalid")
-      setLlmValidationError(fallbackError)
-      setLlmProviderError(error instanceof Error ? error.message : "Unable to save quick response provider settings.")
+      const fallbackError =
+        error instanceof Error
+          ? { name: error.name, message: error.message }
+          : error;
+      setLlmValidationStatus("invalid");
+      setLlmValidationError(fallbackError);
+      setLlmProviderError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save quick response provider settings.",
+      );
     }
   }
 
@@ -796,50 +1030,59 @@ export function SettingsPage() {
     const nextDraft = {
       ...llmProviderDraft,
       provider: nextProvider,
-      model: nextProvider === "openai"
-        ? DEFAULT_OPENAI_SDK_MODEL
-        : nextProvider === "openrouter"
-          ? DEFAULT_OPENROUTER_SDK_MODEL
-          : llmProviderDraft.model,
+      model:
+        nextProvider === "openai"
+          ? DEFAULT_OPENAI_SDK_MODEL
+          : nextProvider === "openrouter"
+            ? DEFAULT_OPENROUTER_SDK_MODEL
+            : llmProviderDraft.model,
       baseUrl: nextProvider === "custom" ? llmProviderDraft.baseUrl : "",
-    }
-    setLlmProviderDraft(nextDraft)
-    void commitLlmProvider(nextDraft)
+    };
+    setLlmProviderDraft(nextDraft);
+    void commitLlmProvider(nextDraft);
   }
 
   function retryChangelog() {
-    changelogCache = null
-    setChangelogStatus("loading")
-    setChangelogError(null)
+    changelogCache = null;
+    setChangelogStatus("loading");
+    setChangelogError(null);
 
     void loadChangelog({ force: true })
       .then((nextReleases) => {
-        setReleases(nextReleases)
-        setChangelogStatus("success")
+        setReleases(nextReleases);
+        setChangelogStatus("success");
       })
       .catch((error: unknown) => {
-        setChangelogError(error instanceof Error ? error.message : "Unable to load changelog.")
-        setChangelogStatus("error")
-      })
+        setChangelogError(
+          error instanceof Error ? error.message : "Unable to load changelog.",
+        );
+        setChangelogStatus("error");
+      });
   }
 
   const customEditorPreview = editorCommandDraft
     .replaceAll("{path}", "/Users/jake/Projects/kanna/src/client/app/App.tsx")
     .replaceAll("{line}", "12")
-    .replaceAll("{column}", "1")
-  const analyticsDisclosureEvents = ANALYTICS_STATIC_EVENT_NAMES
-  const analyticsSettingValue = appSettings?.analyticsEnabled === false ? "disabled" : "enabled"
-  const selectedSection = sidebarItems.find((item) => item.id === selectedPage) ?? sidebarItems[0]
+    .replaceAll("{column}", "1");
+  const analyticsDisclosureEvents = ANALYTICS_STATIC_EVENT_NAMES;
+  const analyticsSettingValue =
+    appSettings?.analyticsEnabled === false ? "disabled" : "enabled";
+  const selectedSection =
+    sidebarItems.find((item) => item.id === selectedPage) ?? sidebarItems[0];
   const selectedSectionSubtitle =
     selectedPage === "keybindings"
       ? getKeybindingsSubtitle(keybindingsFilePathDisplay)
-      : selectedSection.subtitle
-  const showFooter = !isConnecting
-  const llmValidationErrorText = llmValidationError ? JSON.stringify(llmValidationError, null, 2) : ""
+      : selectedSection.subtitle;
+  const showFooter = !isConnecting;
+  const llmValidationErrorText = llmValidationError
+    ? JSON.stringify(llmValidationError, null, 2)
+    : "";
   const llmValidationDescription = (
     <>
       <span>
-        Use an OpenAI-compatible API for title and commit message generation before Claude and Codex. Stored in {llmProvider?.filePathDisplay ?? "the active llm-provider.json file"}.
+        Use an OpenAI-compatible API for title and commit message generation
+        before Claude and Codex. Stored in{" "}
+        {llmProvider?.filePathDisplay ?? "the active llm-provider.json file"}.
       </span>
       <span
         className={cn(
@@ -848,7 +1091,7 @@ export function SettingsPage() {
             ? "text-emerald-600 dark:text-emerald-400"
             : llmValidationStatus === "invalid"
               ? "text-destructive"
-              : "hidden"
+              : "hidden",
         )}
       >
         {llmValidationStatus === "valid" ? (
@@ -872,22 +1115,24 @@ export function SettingsPage() {
         ) : null}
       </span>
     </>
-  )
+  );
 
   async function handleSidebarSignOut() {
-    if (signingOut) return
-    setSigningOut(true)
+    if (signingOut) return;
+    setSigningOut(true);
     try {
-      await state.handleSignOut()
+      await state.handleSignOut();
     } finally {
-      setSigningOut(false)
+      setSigningOut(false);
     }
   }
 
   return (
     <div className="relative flex h-full flex-1 min-w-0 bg-background">
       <div className="flex min-w-0 flex-1">
-        <aside className={`hidden w-[200px] shrink-0 md:block ${showFooter ? "pb-[89px]" : ""}`}>
+        <aside
+          className={`hidden w-[200px] shrink-0 md:block ${showFooter ? "pb-[89px]" : ""}`}
+        >
           <div className="flex flex-col gap-1 px-4 py-6">
             <div className="px-3 pb-5 text-[22px] font-extrabold tracking-[-0.5px] text-foreground">
               Settings
@@ -913,7 +1158,7 @@ export function SettingsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  void handleSidebarSignOut()
+                  void handleSidebarSignOut();
                 }}
                 disabled={signingOut}
                 className="cursor-pointer rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
@@ -932,15 +1177,15 @@ export function SettingsPage() {
             <div className="overflow-x-auto pr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <div className="flex min-w-max items-center gap-2">
                 <div className=" sticky left-0 bg-gradient-to-r from-background via-background/80 to-transparent px-2  py-1">
-                <button
-                  type="button"
-                  onClick={state.openSidebar}
-                  className="flex shrink-0 items-center p-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-                  aria-label="Open sidebar"
-                  title="Open sidebar"
-                >
-                  <Menu className="h-4 w-4 shrink-0" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={state.openSidebar}
+                    className="flex shrink-0 items-center p-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                    aria-label="Open sidebar"
+                    title="Open sidebar"
+                  >
+                    <Menu className="h-4 w-4 shrink-0" />
+                  </button>
                 </div>
                 {sidebarItems.map((item) => (
                   <button
@@ -951,7 +1196,7 @@ export function SettingsPage() {
                       "flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors",
                       item.id === selectedPage
                         ? "border-transparent bg-muted font-medium text-foreground"
-                        : "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                     )}
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
@@ -962,17 +1207,19 @@ export function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      void handleSidebarSignOut()
+                      void handleSidebarSignOut();
                     }}
                     disabled={signingOut}
                     className={cn(
                       "flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors",
                       "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                      "disabled:cursor-not-allowed disabled:opacity-50"
+                      "disabled:cursor-not-allowed disabled:opacity-50",
                     )}
                   >
                     <LogOut className="h-4 w-4 shrink-0" />
-                    <span className="whitespace-nowrap">{signingOut ? "Signing out..." : "Sign out"}</span>
+                    <span className="whitespace-nowrap">
+                      {signingOut ? "Signing out..." : "Sign out"}
+                    </span>
                   </button>
                 ) : null}
               </div>
@@ -1005,7 +1252,10 @@ export function SettingsPage() {
                     {selectedPage === "keybindings" ? (
                       <SettingsHeaderButton
                         onClick={() => {
-                          void state.handleOpenExternalPath("open_editor", keybindingsFilePathDisplay)
+                          void state.handleOpenExternalPath(
+                            "open_editor",
+                            keybindingsFilePathDisplay,
+                          );
                         }}
                         icon={<Code className="h-4 w-4" />}
                       >
@@ -1028,26 +1278,34 @@ export function SettingsPage() {
                     <div className="border-b border-border">
                       <SettingsRow
                         title="Application Update"
-                        description={(
+                        description={
                           <>
                             <span>{updateStatusLabel}.</span>
                             {updateSnapshot?.lastCheckedAt ? (
-                              <span> Last checked {new Intl.DateTimeFormat(undefined, {
-                                month: "short",
-                                day: "numeric",
-                                hour: "numeric",
-                                minute: "2-digit",
-                              }).format(updateSnapshot.lastCheckedAt)}.</span>
+                              <span>
+                                {" "}
+                                Last checked{" "}
+                                {new Intl.DateTimeFormat(undefined, {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                }).format(updateSnapshot.lastCheckedAt)}
+                                .
+                              </span>
                             ) : null}
                             {updateSnapshot?.error ? (
                               <span> {updateSnapshot.error}</span>
                             ) : null}
                           </>
-                        )}
+                        }
                         bordered={false}
                       >
                         <div className="text-right text-sm text-foreground">
-                          <div>Current: {updateSnapshot?.currentVersion ?? appVersion}</div>
+                          <div>
+                            Current:{" "}
+                            {updateSnapshot?.currentVersion ?? appVersion}
+                          </div>
                           <div className="text-xs text-muted-foreground">
                             Latest: {updateSnapshot?.latestVersion ?? "Unknown"}
                           </div>
@@ -1072,7 +1330,11 @@ export function SettingsPage() {
                       >
                         <Select
                           value={chatSoundPreference}
-                          onValueChange={(value) => handleChatSoundPreferenceChange(value as ChatSoundPreference)}
+                          onValueChange={(value) =>
+                            handleChatSoundPreferenceChange(
+                              value as ChatSoundPreference,
+                            )
+                          }
                         >
                           <SelectTrigger className="min-w-[180px]">
                             <SelectValue />
@@ -1080,7 +1342,10 @@ export function SettingsPage() {
                           <SelectContent>
                             <SelectGroup>
                               {chatSoundPreferenceOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
                                   {option.label}
                                 </SelectItem>
                               ))}
@@ -1095,7 +1360,9 @@ export function SettingsPage() {
                       >
                         <Select
                           value={chatSoundId}
-                          onValueChange={(value) => handleChatSoundIdChange(value as ChatSoundId)}
+                          onValueChange={(value) =>
+                            handleChatSoundIdChange(value as ChatSoundId)
+                          }
                         >
                           <SelectTrigger className="min-w-[180px]">
                             <SelectValue />
@@ -1103,7 +1370,10 @@ export function SettingsPage() {
                           <SelectContent>
                             <SelectGroup>
                               {CHAT_SOUND_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
                                   {option.label}
                                 </SelectItem>
                               ))}
@@ -1119,7 +1389,9 @@ export function SettingsPage() {
                       >
                         <Select
                           value={editorPreset}
-                          onValueChange={(value) => handleEditorPresetChange(value as EditorPreset)}
+                          onValueChange={(value) =>
+                            handleEditorPresetChange(value as EditorPreset)
+                          }
                         >
                           <SelectTrigger className="min-w-[180px]">
                             <SelectValue />
@@ -1127,9 +1399,15 @@ export function SettingsPage() {
                           <SelectContent>
                             <SelectGroup>
                               {EDITOR_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
                                   <span className="flex items-center gap-2">
-                                    <EditorIcon preset={option.value} className="h-4 w-4 shrink-0" />
+                                    <EditorIcon
+                                      preset={option.value}
+                                      className="h-4 w-4 shrink-0"
+                                    />
                                     <span>{option.label}</span>
                                   </span>
                                 </SelectItem>
@@ -1143,22 +1421,35 @@ export function SettingsPage() {
                         <div className="border-t border-border">
                           <div className="flex justify-between gap-8 py-5 pl-6">
                             <div className="min-w-0 max-w-xl">
-                              <div className="text-sm font-medium text-foreground">Command Template</div>
+                              <div className="text-sm font-medium text-foreground">
+                                Command Template
+                              </div>
                               <div className="mt-1 text-[13px] text-muted-foreground">
-                                Include {"{path}"} and optionally {"{line}"} and {"{column}"} in your command.
+                                Include {"{path}"} and optionally {"{line}"} and{" "}
+                                {"{column}"} in your command.
                               </div>
                             </div>
                             <div className="flex min-w-0 max-w-[420px] flex-1 flex-col items-stretch gap-2">
                               <Input
                                 type="text"
                                 value={editorCommandDraft}
-                                onChange={(event) => setEditorCommandDraft(event.target.value)}
+                                onChange={(event) =>
+                                  setEditorCommandDraft(event.target.value)
+                                }
                                 onBlur={commitEditorCommand}
-                                onKeyDown={(event) => handleTextInputKeyDown(event, commitEditorCommand)}
+                                onKeyDown={(event) =>
+                                  handleTextInputKeyDown(
+                                    event,
+                                    commitEditorCommand,
+                                  )
+                                }
                                 className="font-mono"
                               />
                               <div className="text-xs text-muted-foreground">
-                                Preview: <span className="font-mono">{customEditorPreview}</span>
+                                Preview:{" "}
+                                <span className="font-mono">
+                                  {customEditorPreview}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -1176,14 +1467,21 @@ export function SettingsPage() {
                             max={MAX_TERMINAL_SCROLLBACK}
                             step={100}
                             value={scrollbackDraft}
-                            onChange={(event) => setScrollbackDraft(event.target.value)}
+                            onChange={(event) =>
+                              setScrollbackDraft(event.target.value)
+                            }
                             onBlur={commitScrollback}
-                            onKeyDown={(event) => handleNumberInputKeyDown(event, commitScrollback)}
+                            onKeyDown={(event) =>
+                              handleNumberInputKeyDown(event, commitScrollback)
+                            }
                             className="hide-number-steppers w-full text-left font-mono md:w-28 md:text-right"
                           />
                           <div className="text-left text-xs text-muted-foreground md:text-right">
-                            {MIN_TERMINAL_SCROLLBACK}-{MAX_TERMINAL_SCROLLBACK} lines
-                            {scrollbackLines === DEFAULT_TERMINAL_SCROLLBACK ? " (default)" : ""}
+                            {MIN_TERMINAL_SCROLLBACK}-{MAX_TERMINAL_SCROLLBACK}{" "}
+                            lines
+                            {scrollbackLines === DEFAULT_TERMINAL_SCROLLBACK
+                              ? " (default)"
+                              : ""}
                           </div>
                         </div>
                       </SettingsRow>
@@ -1199,28 +1497,46 @@ export function SettingsPage() {
                             max={MAX_TERMINAL_MIN_COLUMN_WIDTH}
                             step={10}
                             value={minColumnWidthDraft}
-                            onChange={(event) => setMinColumnWidthDraft(event.target.value)}
+                            onChange={(event) =>
+                              setMinColumnWidthDraft(event.target.value)
+                            }
                             onBlur={commitMinColumnWidth}
-                            onKeyDown={(event) => handleNumberInputKeyDown(event, commitMinColumnWidth)}
+                            onKeyDown={(event) =>
+                              handleNumberInputKeyDown(
+                                event,
+                                commitMinColumnWidth,
+                              )
+                            }
                             className="hide-number-steppers w-full text-left font-mono md:w-28 md:text-right"
                           />
                           <div className="text-left text-xs text-muted-foreground md:text-right">
-                            {MIN_TERMINAL_MIN_COLUMN_WIDTH}-{MAX_TERMINAL_MIN_COLUMN_WIDTH} px
-                            {minColumnWidth === DEFAULT_TERMINAL_MIN_COLUMN_WIDTH ? " (default)" : ""}
+                            {MIN_TERMINAL_MIN_COLUMN_WIDTH}-
+                            {MAX_TERMINAL_MIN_COLUMN_WIDTH} px
+                            {minColumnWidth ===
+                            DEFAULT_TERMINAL_MIN_COLUMN_WIDTH
+                              ? " (default)"
+                              : ""}
                           </div>
                         </div>
                       </SettingsRow>
 
                       <SettingsRow
                         title="Anonymous Analytics"
-                        description={(
+                        description={
                           <>
                             <span>
-                              Help improve Kanna with anonymous product analytics. Kanna sends tracked event names plus a small set of event properties like current version, environment, update version info, and launch flags. No message content, prompts, file paths, or provider credentials are sent.
+                              Help improve Kanna with anonymous product
+                              analytics. Kanna sends tracked event names plus a
+                              small set of event properties like current
+                              version, environment, update version info, and
+                              launch flags. No message content, prompts, file
+                              paths, or provider credentials are sent.
                             </span>
                             <span className="mt-1 block">
-                              Stored in {appSettings?.filePathDisplay ?? "~/.kanna/data/settings.json"}.
-                              {" "}
+                              Stored in{" "}
+                              {appSettings?.filePathDisplay ??
+                                "~/.kanna/data/settings.json"}
+                              .{" "}
                               <button
                                 type="button"
                                 onClick={() => setAnalyticsDialogOpen(true)}
@@ -1230,15 +1546,17 @@ export function SettingsPage() {
                               </button>
                             </span>
                             {appSettings?.warning ? (
-                              <span className="mt-1 block">{appSettings.warning}</span>
+                              <span className="mt-1 block">
+                                {appSettings.warning}
+                              </span>
                             ) : null}
                           </>
-                        )}
+                        }
                       >
                         <SegmentedControl
                           value={analyticsSettingValue}
                           onValueChange={(value) => {
-                            void handleAnalyticsPreferenceChange(value)
+                            void handleAnalyticsPreferenceChange(value);
                           }}
                           options={analyticsOptions}
                           size="sm"
@@ -1255,16 +1573,18 @@ export function SettingsPage() {
                     >
                       <Select
                         value={defaultProvider}
-                        onValueChange={(value) => handleDefaultProviderChange(value as "last_used" | AgentProvider)}
+                        onValueChange={(value) =>
+                          handleDefaultProviderChange(
+                            value as "last_used" | AgentProvider,
+                          )
+                        }
                       >
                         <SelectTrigger className="min-w-[180px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            <SelectItem value="last_used">
-                              Last Used
-                            </SelectItem>
+                            <SelectItem value="last_used">Last Used</SelectItem>
                             {PROVIDERS.map((provider) => (
                               <SelectItem key={provider.id} value={provider.id}>
                                 {provider.label}
@@ -1289,17 +1609,28 @@ export function SettingsPage() {
                           model={providerDefaults.claude.model}
                           modelOptions={providerDefaults.claude.modelOptions}
                           onModelChange={(_, model) => {
-                            handleProviderDefaultModelChange("claude", model)
+                            handleProviderDefaultModelChange("claude", model);
                           }}
                           onModelOptionChange={(change) => {
                             if (change.type === "claudeReasoningEffort") {
-                              handleProviderDefaultModelOptionsChange("claude", { reasoningEffort: change.effort })
+                              handleProviderDefaultModelOptionsChange(
+                                "claude",
+                                { reasoningEffort: change.effort },
+                              );
                             } else if (change.type === "contextWindow") {
-                              handleProviderDefaultModelOptionsChange("claude", { contextWindow: change.contextWindow })
+                              handleProviderDefaultModelOptionsChange(
+                                "claude",
+                                { contextWindow: change.contextWindow },
+                              );
                             }
                           }}
                           planMode={providerDefaults.claude.planMode}
-                          onPlanModeChange={(planMode) => handleProviderDefaultPlanModeChange("claude", planMode)}
+                          onPlanModeChange={(planMode) =>
+                            handleProviderDefaultPlanModeChange(
+                              "claude",
+                              planMode,
+                            )
+                          }
                           includePlanMode
                           className="justify-start flex-wrap"
                         />
@@ -1320,18 +1651,63 @@ export function SettingsPage() {
                           model={providerDefaults.codex.model}
                           modelOptions={providerDefaults.codex.modelOptions}
                           onModelChange={(_, model) => {
-                            handleProviderDefaultModelChange("codex", model)
+                            handleProviderDefaultModelChange("codex", model);
                           }}
                           onModelOptionChange={(change) => {
                             if (change.type === "codexReasoningEffort") {
-                              handleProviderDefaultModelOptionsChange("codex", { reasoningEffort: change.effort })
+                              handleProviderDefaultModelOptionsChange("codex", {
+                                reasoningEffort: change.effort,
+                              });
                             } else if (change.type === "fastMode") {
-                              handleProviderDefaultModelOptionsChange("codex", { fastMode: change.fastMode })
+                              handleProviderDefaultModelOptionsChange("codex", {
+                                fastMode: change.fastMode,
+                              });
                             }
                           }}
                           planMode={providerDefaults.codex.planMode}
-                          onPlanModeChange={(planMode) => handleProviderDefaultPlanModeChange("codex", planMode)}
+                          onPlanModeChange={(planMode) =>
+                            handleProviderDefaultPlanModeChange(
+                              "codex",
+                              planMode,
+                            )
+                          }
                           includePlanMode
+                          className="justify-start flex-wrap"
+                        />
+                      </div>
+                    </SettingsRow>
+
+                    <SettingsRow
+                      title="Pi Defaults"
+                      description={
+                        piModelsLoading
+                          ? "Loading available models from Pi…"
+                          : piModels.length > 0
+                            ? "Saved defaults when using Pi. Models are fetched dynamically from your Pi configuration."
+                            : "Saved defaults when using Pi. Ensure Pi is installed to see available models."
+                      }
+                      alignStart
+                    >
+                      <div className="max-w-[420px]">
+                        <ChatPreferenceControls
+                          availableProviders={PROVIDERS}
+                          selectedProvider="pi"
+                          showProviderPicker={false}
+                          providerLocked
+                          model={providerDefaults.pi.model}
+                          modelOptions={providerDefaults.pi.modelOptions}
+                          piModels={piModels.length > 0 ? piModels : undefined}
+                          onModelChange={(_, model) => {
+                            handleProviderDefaultModelChange("pi", model);
+                          }}
+                          onModelOptionChange={(change) => {
+                            if (change.type === "piThinkingLevel") {
+                              handleProviderDefaultModelOptionsChange("pi", {
+                                thinkingLevel: change.level,
+                              });
+                            }
+                          }}
+                          includePlanMode={false}
                           className="justify-start flex-wrap"
                         />
                       </div>
@@ -1353,14 +1729,22 @@ export function SettingsPage() {
                             {llmProvider.warning}
                           </div>
                         ) : null}
-                        <Select value={llmProviderDraft.provider} onValueChange={(value) => handleLlmProviderSelection(value as LlmProviderKind)}>
+                        <Select
+                          value={llmProviderDraft.provider}
+                          onValueChange={(value) =>
+                            handleLlmProviderSelection(value as LlmProviderKind)
+                          }
+                        >
                           <SelectTrigger className="w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
                               {QUICK_RESPONSE_PROVIDER_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
                                   {option.label}
                                 </SelectItem>
                               ))}
@@ -1370,25 +1754,55 @@ export function SettingsPage() {
                         {llmProviderDraft.provider === "custom" ? (
                           <Input
                             value={llmProviderDraft.baseUrl}
-                            onChange={(event) => setLlmProviderDraft((current) => ({ ...current, baseUrl: event.target.value }))}
+                            onChange={(event) =>
+                              setLlmProviderDraft((current) => ({
+                                ...current,
+                                baseUrl: event.target.value,
+                              }))
+                            }
                             onBlur={() => void commitLlmProvider()}
-                            onKeyDown={(event) => handleTextInputKeyDown(event, () => void commitLlmProvider())}
+                            onKeyDown={(event) =>
+                              handleTextInputKeyDown(
+                                event,
+                                () => void commitLlmProvider(),
+                              )
+                            }
                             placeholder="https://your-provider.example/v1"
                           />
                         ) : null}
                         <Input
                           type="password"
                           value={llmProviderDraft.apiKey}
-                          onChange={(event) => setLlmProviderDraft((current) => ({ ...current, apiKey: event.target.value }))}
+                          onChange={(event) =>
+                            setLlmProviderDraft((current) => ({
+                              ...current,
+                              apiKey: event.target.value,
+                            }))
+                          }
                           onBlur={() => void commitLlmProvider()}
-                          onKeyDown={(event) => handleTextInputKeyDown(event, () => void commitLlmProvider())}
+                          onKeyDown={(event) =>
+                            handleTextInputKeyDown(
+                              event,
+                              () => void commitLlmProvider(),
+                            )
+                          }
                           placeholder="API key"
                         />
                         <Input
                           value={llmProviderDraft.model}
-                          onChange={(event) => setLlmProviderDraft((current) => ({ ...current, model: event.target.value }))}
+                          onChange={(event) =>
+                            setLlmProviderDraft((current) => ({
+                              ...current,
+                              model: event.target.value,
+                            }))
+                          }
                           onBlur={() => void commitLlmProvider()}
-                          onKeyDown={(event) => handleTextInputKeyDown(event, () => void commitLlmProvider())}
+                          onKeyDown={(event) =>
+                            handleTextInputKeyDown(
+                              event,
+                              () => void commitLlmProvider(),
+                            )
+                          }
                           placeholder="Model id"
                         />
                       </div>
@@ -1407,16 +1821,17 @@ export function SettingsPage() {
                       </div>
                     ) : null}
                     {KEYBINDING_ACTIONS.map((action, index) => {
-                      const defaultValue = formatKeybindingInput(DEFAULT_KEYBINDINGS[action])
-                      const currentValue = keybindingDrafts[action] ?? ""
-                      const showRestore = currentValue !== defaultValue
+                      const defaultValue = formatKeybindingInput(
+                        DEFAULT_KEYBINDINGS[action],
+                      );
+                      const currentValue = keybindingDrafts[action] ?? "";
+                      const showRestore = currentValue !== defaultValue;
 
                       return (
                         <SettingsRow
                           key={action}
                           title={KEYBINDING_ACTION_LABELS[action]}
-
-                          description={(
+                          description={
                             <>
                               <span>Comma-separated shortcuts.</span>
                               {showRestore ? (
@@ -1425,7 +1840,7 @@ export function SettingsPage() {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      void restoreDefaultKeybinding(action)
+                                      void restoreDefaultKeybinding(action);
                                     }}
                                     className="inline rounded text-foreground hover:text-foreground/80"
                                   >
@@ -1434,29 +1849,33 @@ export function SettingsPage() {
                                 </>
                               ) : null}
                             </>
-                          )}
+                          }
                           bordered={index !== 0}
-
                         >
                           <div className="flex min-w-0 max-w-[420px] flex-1 flex-col items-stretch gap-2">
                             <Input
                               type="text"
                               value={currentValue}
                               onChange={(event) => {
-                                const nextValue = event.target.value
-                                setKeybindingDrafts((current) => ({ ...current, [action]: nextValue }))
+                                const nextValue = event.target.value;
+                                setKeybindingDrafts((current) => ({
+                                  ...current,
+                                  [action]: nextValue,
+                                }));
                               }}
                               onBlur={() => {
-                                void commitKeybindings()
+                                void commitKeybindings();
                               }}
-                              onKeyDown={(event) => handleTextInputKeyDown(event, () => {
-                                void commitKeybindings()
-                              })}
+                              onKeyDown={(event) =>
+                                handleTextInputKeyDown(event, () => {
+                                  void commitKeybindings();
+                                })
+                              }
                               className="font-mono"
                             />
                           </div>
                         </SettingsRow>
-                      )
+                      );
                     })}
                   </div>
                 ) : (
@@ -1468,10 +1887,10 @@ export function SettingsPage() {
                     updateSnapshot={updateSnapshot}
                     currentVersion={appVersion}
                     onInstallUpdate={() => {
-                      void state.handleInstallUpdate()
+                      void state.handleInstallUpdate();
                     }}
                     onCheckForUpdates={() => {
-                      void state.handleCheckForUpdates({ force: true })
+                      void state.handleCheckForUpdates({ force: true });
                     }}
                   />
                 )}
@@ -1485,7 +1904,6 @@ export function SettingsPage() {
               </div>
             ) : null}
           </div>
-
         </div>
       </div>
 
@@ -1494,19 +1912,29 @@ export function SettingsPage() {
           <div className="px-6 py-[14.25px]">
             <div className="grid gap-3 text-xs text-muted-foreground grid-cols-2 lg:grid-cols-4">
               <div>
-                <div className="mb-1 uppercase tracking-wide text-[11px] text-muted-foreground/80">Machine</div>
+                <div className="mb-1 uppercase tracking-wide text-[11px] text-muted-foreground/80">
+                  Machine
+                </div>
                 <div className="text-foreground/80">{machineName}</div>
               </div>
               <div className="hidden md:block">
-                <div className="mb-1 uppercase tracking-wide text-[11px] text-muted-foreground/80">Connection</div>
-                <div className="text-foreground/80">{state.connectionStatus}</div>
+                <div className="mb-1 uppercase tracking-wide text-[11px] text-muted-foreground/80">
+                  Connection
+                </div>
+                <div className="text-foreground/80">
+                  {state.connectionStatus}
+                </div>
               </div>
               <div className="hidden md:block">
-                <div className="mb-1 uppercase tracking-wide text-[11px] text-muted-foreground/80">Projects Indexed</div>
+                <div className="mb-1 uppercase tracking-wide text-[11px] text-muted-foreground/80">
+                  Projects Indexed
+                </div>
                 <div className="text-foreground/80">{projectCount}</div>
               </div>
               <div>
-                <div className="mb-1 uppercase tracking-wide text-[11px] text-muted-foreground/80">App Version</div>
+                <div className="mb-1 uppercase tracking-wide text-[11px] text-muted-foreground/80">
+                  App Version
+                </div>
                 <div className="text-foreground/80">{appVersion}</div>
               </div>
             </div>
@@ -1518,7 +1946,8 @@ export function SettingsPage() {
           <DialogBody className="space-y-4">
             <DialogTitle>Tracked Events</DialogTitle>
             <div className="text-sm text-muted-foreground">
-              Kanna sends these event names plus the limited property keys below, depending on the event type.
+              Kanna sends these event names plus the limited property keys
+              below, depending on the event type.
             </div>
             <div className="max-h-[60vh] overflow-auto rounded-lg border border-border bg-muted/40 p-3">
               <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -1544,13 +1973,20 @@ export function SettingsPage() {
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button variant="secondary" size="sm" onClick={() => setAnalyticsDialogOpen(false)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setAnalyticsDialogOpen(false)}
+            >
               Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={llmValidationDialogOpen} onOpenChange={setLlmValidationDialogOpen}>
+      <Dialog
+        open={llmValidationDialogOpen}
+        onOpenChange={setLlmValidationDialogOpen}
+      >
         <DialogContent size="lg">
           <DialogBody className="space-y-4">
             <DialogTitle>Validation Error</DialogTitle>
@@ -1559,25 +1995,35 @@ export function SettingsPage() {
             </pre>
           </DialogBody>
           <DialogFooter>
-            <Button variant="secondary" size="sm" onClick={() => setLlmValidationDialogOpen(false)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setLlmValidationDialogOpen(false)}
+            >
               Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
 
-function buildKeybindingPayload(source: Record<string, string>): Record<KeybindingAction, string[]> {
+function buildKeybindingPayload(
+  source: Record<string, string>,
+): Record<KeybindingAction, string[]> {
   return {
-    toggleEmbeddedTerminal: parseKeybindingInput(source.toggleEmbeddedTerminal ?? ""),
+    toggleEmbeddedTerminal: parseKeybindingInput(
+      source.toggleEmbeddedTerminal ?? "",
+    ),
     toggleRightSidebar: parseKeybindingInput(source.toggleRightSidebar ?? ""),
     openInFinder: parseKeybindingInput(source.openInFinder ?? ""),
     openInEditor: parseKeybindingInput(source.openInEditor ?? ""),
     addSplitTerminal: parseKeybindingInput(source.addSplitTerminal ?? ""),
     jumpToSidebarChat: parseKeybindingInput(source.jumpToSidebarChat ?? ""),
-    createChatInCurrentProject: parseKeybindingInput(source.createChatInCurrentProject ?? ""),
+    createChatInCurrentProject: parseKeybindingInput(
+      source.createChatInCurrentProject ?? "",
+    ),
     openAddProject: parseKeybindingInput(source.openAddProject ?? ""),
-  }
+  };
 }
